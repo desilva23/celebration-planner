@@ -23,7 +23,13 @@ const line = (plan: Plan, category: string) => plan.budget.find((l) => l.categor
 const messages = (effects: { message: string }[]) => effects.map((e) => e.message);
 
 const venueVendor: Vendor = {
-  id: "v1", category: "venue", name: "Lotus Hall", contact: "", quote: 150_000, status: "quoted", notes: "",
+  id: "v1",
+  category: "venue",
+  name: "Lotus Hall",
+  contact: "",
+  quote: 150_000,
+  status: "quoted",
+  notes: "",
 };
 
 function deepFreeze<T>(value: T): T {
@@ -79,14 +85,20 @@ describe("plan validity", () => {
     const over = deepFreeze(applyChange(base, { guestCount: 250 }, TODAY).plan);
     // Writing to a frozen object throws in strict-mode modules, so any mutation fails here.
     const results = [
-      applyChange(plan, { guestCount: 250, totalBudget: 700_000, eventDate: "2027-02-01", tier: "premium", priorities: [] }, TODAY).plan,
+      applyChange(
+        plan,
+        { guestCount: 250, totalBudget: 700_000, eventDate: "2027-02-01", tier: "premium", priorities: [] },
+        TODAY,
+      ).plan,
       setTaskStatus(plan, "budget", "done"),
       delayTaskInPlan(plan, "venue", "2027-01-30").plan,
       setBudgetAmount(plan, "decor", 1),
       upsertVendor(plan, { ...venueVendor, quote: 1 }),
       removeVendor(plan, "v1"),
       bookVendor(plan, "v1").plan,
-      ...tradeoffOptions(over).filter((o) => o.feasible).map((o) => applyTradeoff(over, o)),
+      ...tradeoffOptions(over)
+        .filter((o) => o.feasible)
+        .map((o) => applyTradeoff(over, o)),
     ];
     for (const result of results) expect(PlanSchema.safeParse(result).success).toBe(true);
   });
@@ -100,7 +112,13 @@ describe("applyChange", () => {
     let plan = createPlan(weddingBrief(), TODAY);
     plan = setTaskStatus(plan, "budget", "done");
     plan = upsertVendor(plan, {
-      id: "v1", category: "photography", name: "Lens & Light", contact: "", quote: 70_000, status: "quoted", notes: "",
+      id: "v1",
+      category: "photography",
+      name: "Lens & Light",
+      contact: "",
+      quote: 70_000,
+      status: "quoted",
+      notes: "",
     });
     plan = bookVendor(plan, "v1").plan;
     const before = plan;
@@ -133,7 +151,13 @@ describe("applyChange", () => {
   it("warns that a confirmed per-guest price needs a re-quote", () => {
     let plan = createPlan(weddingBrief(), TODAY);
     plan = upsertVendor(plan, {
-      id: "c1", category: "catering", name: "Annapoorna", contact: "", quote: 250_000, status: "quoted", notes: "",
+      id: "c1",
+      category: "catering",
+      name: "Annapoorna",
+      contact: "",
+      quote: 250_000,
+      status: "quoted",
+      notes: "",
     });
     plan = bookVendor(plan, "c1").plan;
     const { effects } = applyChange(plan, { guestCount: 260 }, TODAY);
@@ -169,7 +193,9 @@ describe("applyChange", () => {
   it("warns when a new date squeezes the schedule and makes tasks urgent", () => {
     const { effects } = applyChange(createPlan(weddingBrief(), TODAY), { eventDate: addDays(TODAY, 10) }, TODAY);
     const warnings = messages(effects.filter((e) => e.tone === "warning"));
-    expect(warnings[0]).toBe("Only 10 days left against an ideal 120, so the schedule is compressed and tasks will overlap.");
+    expect(warnings[0]).toBe(
+      "Only 10 days left against an ideal 120, so the schedule is compressed and tasks will overlap.",
+    );
     expect(warnings[1]).toMatch(/^Due within a week: Agree the total budget and what matters most; /);
   });
 
@@ -233,7 +259,13 @@ describe("bookVendor", () => {
   it("confirms the price and completes the booking task", () => {
     let plan = createPlan(weddingBrief(), TODAY);
     plan = upsertVendor(plan, {
-      id: "v1", category: "venue", name: "Lotus Hall", contact: "", quote: 150_000, status: "quoted", notes: "",
+      id: "v1",
+      category: "venue",
+      name: "Lotus Hall",
+      contact: "",
+      quote: 150_000,
+      status: "quoted",
+      notes: "",
     });
     const { plan: booked } = bookVendor(plan, "v1");
     expect(line(booked, "venue")).toMatchObject({ amount: 150_000, source: "confirmed" });
@@ -244,7 +276,13 @@ describe("bookVendor", () => {
   it("needs a quote before booking", () => {
     let plan = createPlan(weddingBrief(), TODAY);
     plan = upsertVendor(plan, {
-      id: "v1", category: "venue", name: "Lotus Hall", contact: "", quote: null, status: "considering", notes: "",
+      id: "v1",
+      category: "venue",
+      name: "Lotus Hall",
+      contact: "",
+      quote: null,
+      status: "considering",
+      notes: "",
     });
     expect(() => bookVendor(plan, "v1")).toThrow(PlanError);
   });
@@ -257,7 +295,12 @@ describe("bookVendor", () => {
     let plan = createPlan(weddingBrief({ eventType: "community" }), TODAY);
     plan = upsertVendor(plan, { ...venueVendor, id: "a1", category: "attire", quote: 20_000 });
     const { plan: booked, effects } = bookVendor(plan, "a1");
-    expect(line(booked, "attire")).toEqual({ category: "attire", amount: 20_000, scalesWithGuests: false, source: "confirmed" });
+    expect(line(booked, "attire")).toEqual({
+      category: "attire",
+      amount: 20_000,
+      scalesWithGuests: false,
+      source: "confirmed",
+    });
     expect(messages(effects)[0]).toBe("Attire added at ₹20,000");
   });
 

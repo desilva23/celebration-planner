@@ -9,8 +9,16 @@ import { z } from "zod";
 type Node = Record<string, unknown>;
 
 const LIMIT_KEYS = new Set([
-  "minLength", "maxLength", "pattern", "format", "minItems", "maxItems",
-  "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "format",
+  "minItems",
+  "maxItems",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
 ]);
 
 /** Ignore Zod's default safe-integer bounds; they say nothing useful to a model. */

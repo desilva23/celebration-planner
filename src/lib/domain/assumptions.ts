@@ -25,6 +25,7 @@ export const CATEGORY_META: Record<CategoryId, CategoryMeta> = {
 };
 
 /** Share of the total budget per category. Each row sums to 1. */
+// prettier-ignore
 export const BUDGET_WEIGHTS: Record<EventType, Partial<Record<CategoryId, number>>> = {
   wedding: {
     venue: 0.22, catering: 0.32, decor: 0.12, photography: 0.1, entertainment: 0.05,
@@ -78,6 +79,7 @@ export interface TaskTemplate {
 
 // Ordered so that every dependency appears before its dependents and is due
 // earlier, which keeps scheduling a single forward pass.
+// prettier-ignore
 export const TASK_TEMPLATES: TaskTemplate[] = [
   { id: "budget", title: "Agree the total budget and what matters most", category: "planning", due: 0.95, span: 0.05, dependsOn: [], priority: "high" },
   { id: "guests-draft", title: "Draft the guest list", category: "planning", due: 0.88, span: 0.07, dependsOn: ["budget"], priority: "high" },

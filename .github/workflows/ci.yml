@@ -25,6 +25,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       # Fails if statements, branches, functions or lines drop below 100%.

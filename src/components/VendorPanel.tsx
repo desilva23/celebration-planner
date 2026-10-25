@@ -79,7 +79,15 @@ export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
   );
 }
 
-function VendorBrief({ plan, category, budgetForCategory }: { plan: Plan; category: CategoryId; budgetForCategory: number }) {
+function VendorBrief({
+  plan,
+  category,
+  budgetForCategory,
+}: {
+  plan: Plan;
+  category: CategoryId;
+  budgetForCategory: number;
+}) {
   const call = useAiCall<VendorBriefResult>("/api/vendor-brief");
   const result = call.envelope?.data;
 
@@ -101,15 +109,27 @@ function VendorBrief({ plan, category, budgetForCategory }: { plan: Plan; catego
             <div className="grid three">
               <div>
                 <h4>What you need</h4>
-                <ul>{result.requirements.map((r) => <li key={r}>{r}</li>)}</ul>
+                <ul>
+                  {result.requirements.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
               </div>
               <div>
                 <h4>Questions to ask</h4>
-                <ul>{result.questions.map((q) => <li key={q}>{q}</li>)}</ul>
+                <ul>
+                  {result.questions.map((q) => (
+                    <li key={q}>{q}</li>
+                  ))}
+                </ul>
               </div>
               <div>
                 <h4>Watch out for</h4>
-                <ul>{result.watchOuts.map((w) => <li key={w}>{w}</li>)}</ul>
+                <ul>
+                  {result.watchOuts.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
@@ -136,7 +156,8 @@ function VendorRow({
   function saveQuote(event: SubmitEvent) {
     event.preventDefault();
     const amount = Math.round(Number(quote));
-    if (quote.trim() && Number.isSafeInteger(amount) && amount >= 0) onSave({ ...vendor, quote: amount, status: "quoted" });
+    if (quote.trim() && Number.isSafeInteger(amount) && amount >= 0)
+      onSave({ ...vendor, quote: amount, status: "quoted" });
   }
 
   return (
@@ -153,15 +174,23 @@ function VendorRow({
         <div className="vendor-actions">
           <form onSubmit={saveQuote} className="inline-form">
             <label htmlFor={quoteId}>Their quote (₹)</label>
-            <input id={quoteId} type="number" inputMode="numeric" min={0} value={quote} onChange={(e) => setQuote(e.target.value)} />
-            <button type="submit" className="button ghost small">Save quote</button>
+            <input
+              id={quoteId}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={quote}
+              onChange={(e) => setQuote(e.target.value)}
+            />
+            <button type="submit" className="button ghost small">
+              Save quote
+            </button>
           </form>
           <button type="button" className="button primary small" onClick={onBook} disabled={vendor.quote === null}>
             Mark as booked
           </button>
           <button type="button" className="button ghost small" onClick={onRemove}>
-            Remove{" "}
-            <span className="visually-hidden">{vendor.name}</span>
+            Remove <span className="visually-hidden">{vendor.name}</span>
           </button>
         </div>
       ) : (
@@ -204,22 +233,50 @@ function AddVendor({ category, onAdd }: { category: CategoryId; onAdd: (v: Vendo
       <form onSubmit={submit} className="grid two">
         <div className="field">
           <label htmlFor="vendor-name">Business name</label>
-          <input id="vendor-name" type="text" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            id="vendor-name"
+            type="text"
+            required
+            maxLength={80}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div className="field">
           <label htmlFor="vendor-contact">Contact (optional)</label>
-          <input id="vendor-contact" type="text" maxLength={120} value={contact} onChange={(e) => setContact(e.target.value)} />
+          <input
+            id="vendor-contact"
+            type="text"
+            maxLength={120}
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+          />
         </div>
         <div className="field">
           <label htmlFor="vendor-quote">Quoted price, if you have one (₹)</label>
-          <input id="vendor-quote" type="number" inputMode="numeric" min={0} value={quote} onChange={(e) => setQuote(e.target.value)} />
+          <input
+            id="vendor-quote"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={quote}
+            onChange={(e) => setQuote(e.target.value)}
+          />
         </div>
         <div className="field">
           <label htmlFor="vendor-notes">Notes (optional)</label>
-          <input id="vendor-notes" type="text" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <input
+            id="vendor-notes"
+            type="text"
+            maxLength={500}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
         </div>
         <div>
-          <button type="submit" className="button secondary">Add vendor</button>
+          <button type="submit" className="button secondary">
+            Add vendor
+          </button>
         </div>
       </form>
     </details>
@@ -269,9 +326,21 @@ function QuoteComparison({
           {quotes.map((q, i) => (
             <div key={i} className="field">
               <label htmlFor={`quote-label-${i}`}>Name for quote {i + 1}</label>
-              <input id={`quote-label-${i}`} type="text" maxLength={60} value={q.label} onChange={(e) => setQuote(i, { label: e.target.value })} />
+              <input
+                id={`quote-label-${i}`}
+                type="text"
+                maxLength={60}
+                value={q.label}
+                onChange={(e) => setQuote(i, { label: e.target.value })}
+              />
               <label htmlFor={`quote-text-${i}`}>Quote text</label>
-              <textarea id={`quote-text-${i}`} rows={5} maxLength={3000} value={q.text} onChange={(e) => setQuote(i, { text: e.target.value })} />
+              <textarea
+                id={`quote-text-${i}`}
+                rows={5}
+                maxLength={3000}
+                value={q.text}
+                onChange={(e) => setQuote(i, { text: e.target.value })}
+              />
             </div>
           ))}
         </div>
@@ -280,7 +349,9 @@ function QuoteComparison({
             <button
               type="button"
               className="button ghost"
-              onClick={() => setQuotes((qs) => [...qs, { label: `Quote ${String.fromCharCode(65 + qs.length)}`, text: "" }])}
+              onClick={() =>
+                setQuotes((qs) => [...qs, { label: `Quote ${String.fromCharCode(65 + qs.length)}`, text: "" }])
+              }
             >
               Add another quote
             </button>
@@ -298,7 +369,8 @@ function QuoteComparison({
             <Provenance envelope={call.envelope} />
             <table>
               <caption>
-                Quotes compared against your {formatInr(budgetForCategory)} {categoryLabel(category).toLowerCase()} estimate
+                Quotes compared against your {formatInr(budgetForCategory)} {categoryLabel(category).toLowerCase()}{" "}
+                estimate
               </caption>
               <thead>
                 <tr>
@@ -309,7 +381,9 @@ function QuoteComparison({
                   <th scope="col">Extra charges</th>
                   <th scope="col">Terms</th>
                   <th scope="col">Clarify before booking</th>
-                  <th scope="col"><span className="visually-hidden">Actions</span></th>
+                  <th scope="col">
+                    <span className="visually-hidden">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -340,10 +414,34 @@ function QuoteComparison({
                           </>
                         )}
                       </td>
-                      <td><ul>{q.inclusions.map((x) => <li key={x}>{x}</li>)}</ul></td>
-                      <td><ul>{q.extraCharges.map((x) => <li key={x}>{x}</li>)}</ul></td>
-                      <td><ul>{q.terms.map((x) => <li key={x}>{x}</li>)}</ul></td>
-                      <td><ul>{q.needsClarification.map((x) => <li key={x}>{x}</li>)}</ul></td>
+                      <td>
+                        <ul>
+                          {q.inclusions.map((x) => (
+                            <li key={x}>{x}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <ul>
+                          {q.extraCharges.map((x) => (
+                            <li key={x}>{x}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <ul>
+                          {q.terms.map((x) => (
+                            <li key={x}>{x}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <ul>
+                          {q.needsClarification.map((x) => (
+                            <li key={x}>{x}</li>
+                          ))}
+                        </ul>
+                      </td>
                       <td>
                         <button
                           type="button"

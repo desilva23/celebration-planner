@@ -4,7 +4,12 @@ import { totalIdeaCost } from "./idea-cost";
 describe("totalIdeaCost", () => {
   it("derives the estimate from the breakdown and fixes swapped bounds", () => {
     const idea = totalIdeaCost({
-      title: "Feast", summary: "", whyItFits: "", details: [], category: "catering", assumptions: [],
+      title: "Feast",
+      summary: "",
+      whyItFits: "",
+      details: [],
+      category: "catering",
+      assumptions: [],
       costBreakdown: [
         { item: "Food, 200 plates", min: 200_000, max: 220_000 },
         { item: "Service staff", min: 30_000, max: 20_000 },

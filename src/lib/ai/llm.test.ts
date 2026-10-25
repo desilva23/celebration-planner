@@ -9,8 +9,15 @@ vi.mock("./providers/gemini", () => ({ geminiComplete: vi.fn() }));
 
 const validReply = {
   updates: {
-    eventType: null, title: null, eventDate: null, guestCount: 250, totalBudget: null,
-    tier: null, city: null, priorities: null, notes: null,
+    eventType: null,
+    title: null,
+    eventDate: null,
+    guestCount: 250,
+    totalBudget: null,
+    tier: null,
+    city: null,
+    priorities: null,
+    notes: null,
   },
   understood: "250 guests.",
   clarifyingQuestion: null,
@@ -18,7 +25,9 @@ const validReply = {
 
 function groqReply(content: string, status = 200) {
   return new Response(
-    JSON.stringify(status === 200 ? { choices: [{ message: { content }, finish_reason: "stop" }] } : { error: { message: content } }),
+    JSON.stringify(
+      status === 200 ? { choices: [{ message: { content }, finish_reason: "stop" }] } : { error: { message: content } },
+    ),
     { status, headers: { "content-type": "application/json" } },
   );
 }
@@ -39,7 +48,13 @@ describe("generateStructured with Gemini", () => {
     complete.mockResolvedValueOnce(JSON.stringify(validReply));
     await expect(generateStructured(request)).resolves.toEqual(validReply);
     const [completion] = complete.mock.calls[0];
-    expect(completion).toMatchObject({ name: "interpret_result", system: "sys", prompt: "50 more guests", tier: "lite", temperature: 0.2 });
+    expect(completion).toMatchObject({
+      name: "interpret_result",
+      system: "sys",
+      prompt: "50 more guests",
+      tier: "lite",
+      temperature: 0.2,
+    });
     expect(completion.signal).toBeInstanceOf(AbortSignal);
     expect(JSON.stringify(completion.jsonSchema)).not.toMatch(/maxLength|\$schema/);
   });
@@ -94,7 +109,7 @@ describe("generateStructured with Groq", () => {
 
   it("retries once when the reply doesn't validate", async () => {
     fetchMock
-      .mockResolvedValueOnce(groqReply("{\"nope\": true}"))
+      .mockResolvedValueOnce(groqReply('{"nope": true}'))
       .mockResolvedValueOnce(groqReply(JSON.stringify(validReply)));
     await expect(generateStructured(request)).resolves.toEqual(validReply);
     expect(fetchMock).toHaveBeenCalledTimes(2);

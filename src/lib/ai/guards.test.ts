@@ -4,8 +4,15 @@ import { verifyQuoteFigures } from "./guards";
 import { numbersMentioned, parseAmount } from "./numbers";
 
 const summary = (overrides: Partial<QuoteSummary>): QuoteSummary => ({
-  label: "A", total: null, perGuest: null, guestsCovered: null,
-  inclusions: [], extraCharges: [], terms: [], needsClarification: [], ...overrides,
+  label: "A",
+  total: null,
+  perGuest: null,
+  guestsCovered: null,
+  inclusions: [],
+  extraCharges: [],
+  terms: [],
+  needsClarification: [],
+  ...overrides,
 });
 
 describe("numbersMentioned", () => {

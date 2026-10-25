@@ -93,7 +93,10 @@ export function aiRoute<I, O>({ name, input, run, fallback }: AiRouteOptions<I, 
         };
         return Response.json(envelope);
       }
-      return fail(503, unconfigured ? "AI isn't configured on this server." : "The AI service didn't respond. Try again in a moment.");
+      return fail(
+        503,
+        unconfigured ? "AI isn't configured on this server." : "The AI service didn't respond. Try again in a moment.",
+      );
     }
   };
 }

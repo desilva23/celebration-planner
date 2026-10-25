@@ -21,7 +21,9 @@ describe("PlannerApp", () => {
 
   it("starts with the intake form and says when AI is off", () => {
     render(<PlannerApp aiProvider={null} />);
-    expect(screen.getByRole("heading", { level: 1, name: "Plan a celebration that survives real life" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Plan a celebration that survives real life" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("AI off, using built-in suggestions")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New plan" })).not.toBeInTheDocument();
   });

@@ -15,7 +15,10 @@ let clients = 0;
 const client = () => ({ "x-forwarded-for": `203.0.113.${++clients}` });
 
 let routes = 0;
-function route(run: (input: { message: string }) => Promise<string>, fallback?: (input: { message: string }) => string) {
+function route(
+  run: (input: { message: string }) => Promise<string>,
+  fallback?: (input: { message: string }) => string,
+) {
   return aiRoute({ name: `test-${++routes}`, input: z.object({ message: z.string().min(1) }), run, fallback });
 }
 
@@ -62,7 +65,9 @@ describe("AI routes", () => {
   it("returns 503 rather than guessing when quote reading needs AI", async () => {
     const res = await compareQuotes(
       post({
-        category: "catering", guestCount: 200, budgetForCategory: 250_000,
+        category: "catering",
+        guestCount: 200,
+        budgetForCategory: 250_000,
         quotes: [{ label: "A", text: "Veg menu at Rs 1,250 per plate for up to 200 guests." }],
       }),
     );
@@ -124,20 +129,27 @@ describe("aiRoute", () => {
   ])("logs only the type when the failure is %s", async (_, failure, logged) => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- non-Error rejections are under test
-    await route(() => Promise.reject(failure), () => "built-in")(post({ message: "my private plans" }, client()));
+    const fail = () => Promise.reject(failure);
+    await route(fail, () => "built-in")(post({ message: "my private plans" }, client()));
     expect(log).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`^\\[ai:test-\\d+\\] ${logged}$`)));
     expect(JSON.stringify(log.mock.calls)).not.toContain("private");
   });
 
   it("explains, without logging, when AI simply isn't configured", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = await route(() => Promise.reject(new AiUnavailableError("no key")), () => "built-in")(post({ message: "hi" }, client()));
+    const res = await route(
+      () => Promise.reject(new AiUnavailableError("no key")),
+      () => "built-in",
+    )(post({ message: "hi" }, client()));
     expect((await res.json()).notice).toBe("AI isn't configured on this server, so this is a built-in suggestion.");
     expect(log).not.toHaveBeenCalled();
   });
 
   it("doesn't cache a fallback, so the AI is tried again next time", async () => {
-    const run = vi.fn<() => Promise<string>>().mockRejectedValueOnce(new AiUnavailableError("no key")).mockResolvedValueOnce("ai");
+    const run = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new AiUnavailableError("no key"))
+      .mockResolvedValueOnce("ai");
     const handler = route(run, () => "built-in");
     const headers = client();
     expect((await (await handler(post({ message: "hi" }, headers))).json()).source).toBe("fallback");
@@ -170,7 +182,12 @@ describe("aiRoute", () => {
   });
 
   it("accepts a same-site request that arrives through a proxy", async () => {
-    const headers = { ...client(), origin: "https://planner.example", "x-forwarded-host": "planner.example", host: "10.0.0.5:8080" };
+    const headers = {
+      ...client(),
+      origin: "https://planner.example",
+      "x-forwarded-host": "planner.example",
+      host: "10.0.0.5:8080",
+    };
     expect((await route(async () => "ok")(post({ message: "hi" }, headers))).status).toBe(200);
   });
 

@@ -37,7 +37,11 @@ describe("prompts", () => {
 
 describe("interpretPrompt", () => {
   it("anchors relative dates to today and fences the current brief", () => {
-    const prompt = interpretPrompt({ message: "two weeks earlier", brief: weddingBrief({ notes: "<b>veg</b>" }), today: TODAY });
+    const prompt = interpretPrompt({
+      message: "two weeks earlier",
+      brief: weddingBrief({ notes: "<b>veg</b>" }),
+      today: TODAY,
+    });
     expect(prompt).toMatch(/^Today is 2026-10-25\./);
     expect(prompt).toContain('"guestCount": 200');
     expect(prompt).not.toContain("<b>");
@@ -53,7 +57,10 @@ describe("ideasPrompt", () => {
   const request = { brief: weddingBrief(), budget: allocateBudget(weddingBrief()) };
 
   it("lists each budget line with its label and whether it's confirmed", () => {
-    const prompt = ideasPrompt({ ...request, budget: request.budget.map((l) => (l.category === "venue" ? { ...l, source: "confirmed" } : l)) });
+    const prompt = ideasPrompt({
+      ...request,
+      budget: request.budget.map((l) => (l.category === "venue" ? { ...l, source: "confirmed" } : l)),
+    });
     expect(prompt).toContain("- Venue (venue): ₹1,76,000 confirmed");
     expect(prompt).toContain("- Catering (catering): ₹2,56,000 estimate");
   });
@@ -66,10 +73,18 @@ describe("ideasPrompt", () => {
   });
 
   it("passes earlier ideas back as data so a refinement can build on them", () => {
-    const previous = [{
-      title: "Feast <b>", summary: "", whyItFits: "", details: [], category: "catering" as const, assumptions: [],
-      costBreakdown: [{ item: "Food", min: 1, max: 2 }], estimatedCost: { min: 1, max: 2 },
-    }];
+    const previous = [
+      {
+        title: "Feast <b>",
+        summary: "",
+        whyItFits: "",
+        details: [],
+        category: "catering" as const,
+        assumptions: [],
+        costBreakdown: [{ item: "Food", min: 1, max: 2 }],
+        estimatedCost: { min: 1, max: 2 },
+      },
+    ];
     const prompt = ideasPrompt({ ...request, refinement: "cheaper", previous });
     expect(prompt).toMatch(/Previous ideas:\n<user_input>\n\[\{"title":"Feast b"/);
     expect(tags(prompt)).toEqual({ open: 3, close: 3 });

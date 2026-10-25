@@ -18,17 +18,26 @@ const withVendors = (...vendors: Vendor[]) => vendors.reduce((plan, v) => upsert
 const savedVendors = (onChange: ReturnType<typeof panelProps>["onChange"]) => onChange.mock.lastCall![0].vendors;
 
 const quote = (overrides: Partial<QuoteSummary>): QuoteSummary => ({
-  label: "Quote A", total: null, perGuest: null, guestsCovered: null,
-  inclusions: [], extraCharges: [], terms: [], needsClarification: [], ...overrides,
+  label: "Quote A",
+  total: null,
+  perGuest: null,
+  guestsCovered: null,
+  inclusions: [],
+  extraCharges: [],
+  terms: [],
+  needsClarification: [],
+  ...overrides,
 });
 
 describe("VendorPanel", () => {
   it("offers the budget's vendor types and shows what's planned for the chosen one", async () => {
     const { container, user } = setup();
     const type = screen.getByLabelText("Vendor type");
-    expect(within(type).getAllByRole("option").map((o) => o.textContent)).toEqual([
-      "Venue", "Catering", "Decor", "Photography", "Entertainment", "Attire", "Invitations", "Transport",
-    ]);
+    expect(
+      within(type)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["Venue", "Catering", "Decor", "Photography", "Entertainment", "Attire", "Invitations", "Transport"]);
     expect(screen.getByText("Planned: ₹1,76,000 (estimate)")).toBeInTheDocument();
     expect(screen.getByText("None yet. Add one below once you’ve been in touch.")).toBeInTheDocument();
     expect(await axeViolations(container)).toEqual([]);
@@ -49,7 +58,15 @@ describe("VendorPanel", () => {
       await user.type(screen.getByLabelText("Notes (optional)"), "Has parking");
       await user.click(screen.getByRole("button", { name: "Add vendor" }));
       expect(savedVendors(onChange)).toEqual([
-        { id: expect.stringMatching(/^\w{8}$/), category: "venue", name: "Lotus Hall", contact: "98400 00000", quote: 150_000, status: "quoted", notes: "Has parking" },
+        {
+          id: expect.stringMatching(/^\w{8}$/),
+          category: "venue",
+          name: "Lotus Hall",
+          contact: "98400 00000",
+          quote: 150_000,
+          status: "quoted",
+          notes: "Has parking",
+        },
       ]);
       expect(screen.getByLabelText("Business name")).toHaveValue("");
     });
@@ -91,11 +108,17 @@ describe("VendorPanel", () => {
       await user.click(screen.getByRole("button", { name: "Mark as booked" }));
       const [update, heading] = onUpdate.mock.calls[0];
       expect(heading).toBe("Lotus Hall booked");
-      expect(update.plan.budget.find((l) => l.category === "venue")).toMatchObject({ amount: 150_000, source: "confirmed" });
+      expect(update.plan.budget.find((l) => l.category === "venue")).toMatchObject({
+        amount: 150_000,
+        source: "confirmed",
+      });
     });
 
     it.each([
-      [new PlanError("Record the vendor's quote before marking it booked."), "Record the vendor's quote before marking it booked."],
+      [
+        new PlanError("Record the vendor's quote before marking it booked."),
+        "Record the vendor's quote before marking it booked.",
+      ],
       [new Error("storage exploded"), "Couldn't record the booking."],
     ])("explains when a booking can't be recorded: %s", async (failure, message) => {
       const plan = withVendors(vendor({ quote: 150_000, status: "quoted" }));
@@ -159,7 +182,10 @@ describe("VendorPanel", () => {
       expect(await screen.findByRole("heading", { name: "What you need" })).toBeInTheDocument();
       expect(screen.getByText("What is the capacity?")).toBeInTheDocument();
       expect(screen.getByText("Parking charges")).toBeInTheDocument();
-      expect(api.sent()[0]).toEqual({ url: "/api/vendor-brief", body: { category: "venue", brief: plan.brief, budgetForCategory: 176_000 } });
+      expect(api.sent()[0]).toEqual({
+        url: "/api/vendor-brief",
+        body: { category: "venue", brief: plan.brief, budgetForCategory: 176_000 },
+      });
     });
 
     it("reports a failure", async () => {
@@ -193,8 +219,19 @@ describe("VendorPanel", () => {
         source: "ai",
         data: {
           quotes: [
-            quote({ label: "Annapoorna", total: 250_000, guestsCovered: 200, inclusions: ["Welcome drink"], extraCharges: ["GST 5%"], terms: ["50% advance"] }),
-            quote({ label: "Saravana", perGuest: 1_500, needsClarification: ["Confirm GST", "Ask about staff", "Check parking"] }),
+            quote({
+              label: "Annapoorna",
+              total: 250_000,
+              guestsCovered: 200,
+              inclusions: ["Welcome drink"],
+              extraCharges: ["GST 5%"],
+              terms: ["50% advance"],
+            }),
+            quote({
+              label: "Saravana",
+              perGuest: 1_500,
+              needsClarification: ["Confirm GST", "Ask about staff", "Check parking"],
+            }),
             quote({ label: "Mystery" }),
           ],
         },
@@ -206,13 +243,26 @@ describe("VendorPanel", () => {
       await user.type(screen.getAllByLabelText("Quote text")[0], "Rs 2,50,000 for 200 guests, GST extra");
       await user.click(screen.getByRole("button", { name: "Compare" }));
 
-      const table = await screen.findByRole("table", { name: /Quotes compared against your ₹2,56,000 catering estimate/ });
-      const cells = (label: string) => within(within(table).getByRole("rowheader", { name: label }).closest("tr")!).getAllByRole("cell");
-      expect(cells("Annapoorna").slice(0, 5).map((c) => c.textContent)).toEqual([
-        "₹2,50,000 totalcovers 200", "₹2,50,000within estimate", "Welcome drink", "GST 5%", "50% advance",
-      ]);
-      expect(cells("Saravana").slice(0, 2).map((c) => c.textContent)).toEqual(["₹1,500 per guest", "₹3,00,000calculated₹44,000 over estimate"]);
-      expect(cells("Mystery").slice(0, 2).map((c) => c.textContent)).toEqual(["No price stated", "—"]);
+      const table = await screen.findByRole("table", {
+        name: /Quotes compared against your ₹2,56,000 catering estimate/,
+      });
+      const cells = (label: string) =>
+        within(within(table).getByRole("rowheader", { name: label }).closest("tr")!).getAllByRole("cell");
+      expect(
+        cells("Annapoorna")
+          .slice(0, 5)
+          .map((c) => c.textContent),
+      ).toEqual(["₹2,50,000 totalcovers 200", "₹2,50,000within estimate", "Welcome drink", "GST 5%", "50% advance"]);
+      expect(
+        cells("Saravana")
+          .slice(0, 2)
+          .map((c) => c.textContent),
+      ).toEqual(["₹1,500 per guest", "₹3,00,000calculated₹44,000 over estimate"]);
+      expect(
+        cells("Mystery")
+          .slice(0, 2)
+          .map((c) => c.textContent),
+      ).toEqual(["No price stated", "—"]);
       expect(api.sent()[0].body).toEqual({
         category: "catering",
         guestCount: 200,
@@ -227,7 +277,11 @@ describe("VendorPanel", () => {
         source: "ai",
         data: {
           quotes: [
-            quote({ label: "Saravana", perGuest: 1_500, needsClarification: ["Confirm GST.", "Ask about staff.", "Check parking."] }),
+            quote({
+              label: "Saravana",
+              perGuest: 1_500,
+              needsClarification: ["Confirm GST.", "Ask about staff.", "Check parking."],
+            }),
             quote({ label: "Mystery" }),
           ],
         },
@@ -238,7 +292,11 @@ describe("VendorPanel", () => {
       await user.click(screen.getByRole("button", { name: "Compare" }));
       await user.click(await screen.findByRole("button", { name: "Save to my vendors: Saravana" }));
       expect(savedVendors(onChange)[0]).toMatchObject({
-        category: "catering", name: "Saravana", quote: 300_000, status: "quoted", notes: "Confirm GST. Ask about staff.",
+        category: "catering",
+        name: "Saravana",
+        quote: 300_000,
+        status: "quoted",
+        notes: "Confirm GST. Ask about staff.",
       });
       await user.click(screen.getByRole("button", { name: "Save to my vendors: Mystery" }));
       expect(savedVendors(onChange)[0]).toMatchObject({ name: "Mystery", quote: null, status: "considering" });
@@ -250,7 +308,10 @@ describe("VendorPanel", () => {
       await user.click(screen.getByRole("button", { name: "Add another quote" }));
       await user.click(screen.getByRole("button", { name: "Add another quote" }));
       expect(screen.getAllByLabelText(/^Name for quote/).map((input) => (input as HTMLInputElement).value)).toEqual([
-        "Quote A", "Quote B", "Quote C", "Quote D",
+        "Quote A",
+        "Quote B",
+        "Quote C",
+        "Quote D",
       ]);
       expect(screen.queryByRole("button", { name: "Add another quote" })).not.toBeInTheDocument();
     });
@@ -258,7 +319,12 @@ describe("VendorPanel", () => {
     // Regression: rows were keyed by label, so two quotes with the same name collided.
     it("shows two quotes with the same name as separate rows", async () => {
       const error = vi.spyOn(console, "error");
-      stubFetch().reply({ source: "ai", data: { quotes: [quote({ label: "Annapoorna", perGuest: 1_250 }), quote({ label: "Annapoorna", perGuest: 1_100 })] } });
+      stubFetch().reply({
+        source: "ai",
+        data: {
+          quotes: [quote({ label: "Annapoorna", perGuest: 1_250 }), quote({ label: "Annapoorna", perGuest: 1_100 })],
+        },
+      });
       const { user } = setup();
       await openComparison(user);
       await user.type(screen.getAllByLabelText("Quote text")[0], "Rs 1,250 per plate for the basic menu");

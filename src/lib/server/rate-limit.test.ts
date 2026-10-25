@@ -37,7 +37,9 @@ describe("clientKey", () => {
   const request = (headers: Record<string, string>) => new Request("http://localhost/", { headers });
 
   it("prefers the first forwarded address, then the real-IP header, then a shared bucket", () => {
-    expect(clientKey(request({ "x-forwarded-for": " 198.51.100.7 , 10.0.0.1", "x-real-ip": "10.0.0.2" }))).toBe("198.51.100.7");
+    expect(clientKey(request({ "x-forwarded-for": " 198.51.100.7 , 10.0.0.1", "x-real-ip": "10.0.0.2" }))).toBe(
+      "198.51.100.7",
+    );
     expect(clientKey(request({ "x-forwarded-for": "", "x-real-ip": "10.0.0.2" }))).toBe("10.0.0.2");
     expect(clientKey(request({}))).toBe("anonymous");
   });

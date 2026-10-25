@@ -57,21 +57,30 @@ describe("responseSchemas", () => {
   });
 
   it("turns dates, item counts and numeric bounds into hints", () => {
-    const updates = props(responseSchemas(InterpretResultSchema).portable).updates as unknown as Record<string, unknown>;
+    const updates = props(responseSchemas(InterpretResultSchema).portable).updates as unknown as Record<
+      string,
+      unknown
+    >;
     expect(props(updates).eventDate.anyOf![0].description).toBe("a date as YYYY-MM-DD");
     expect(props(updates).guestCount.anyOf![0].description).toBe("minimum 1; maximum 5000");
-    expect(props(responseSchemas(GeneratedIdeasSchema).portable).ideas.description).toBe("at least 1 items; at most 4 items");
+    expect(props(responseSchemas(GeneratedIdeasSchema).portable).ideas.description).toBe(
+      "at least 1 items; at most 4 items",
+    );
   });
 
   it("adds hints after an existing description, and skips Zod's default integer bounds", () => {
-    const { portable } = responseSchemas(z.object({ total: z.string().max(5).describe("The total"), count: z.number().int() }));
+    const { portable } = responseSchemas(
+      z.object({ total: z.string().max(5).describe("The total"), count: z.number().int() }),
+    );
     expect(props(portable).total.description).toBe("The total; at most 5 characters");
     expect(props(portable).count.description).toBeUndefined();
   });
 
   // Regression: field names under `properties` used to be stripped like keywords.
   it("keeps fields whose names look like schema keywords", () => {
-    const { portable } = responseSchemas(z.object({ format: z.string(), pattern: z.string().max(10), minimum: z.number() }));
+    const { portable } = responseSchemas(
+      z.object({ format: z.string(), pattern: z.string().max(10), minimum: z.number() }),
+    );
     expect(Object.keys(props(portable))).toEqual(["format", "pattern", "minimum"]);
     expect(portable.required).toEqual(["format", "pattern", "minimum"]);
     expect(props(portable).pattern.description).toBe("at most 10 characters");
@@ -83,8 +92,13 @@ describe("fitToSchema", () => {
 
   it("trims over-long replies so they validate", () => {
     const idea = {
-      title: "T".repeat(200), summary: "s", whyItFits: "w", details: Array(10).fill("d"),
-      category: "decor", costBreakdown: [{ item: "Flowers", min: 1000.4, max: 2000.6 }], assumptions: [],
+      title: "T".repeat(200),
+      summary: "s",
+      whyItFits: "w",
+      details: Array(10).fill("d"),
+      category: "decor",
+      costBreakdown: [{ item: "Flowers", min: 1000.4, max: 2000.6 }],
+      assumptions: [],
     };
     const fitted = fitToSchema({ ideas: [idea, idea, idea, idea, idea], followUpQuestion: null }, full);
     const parsed = GeneratedIdeasSchema.parse(fitted);
@@ -114,7 +128,9 @@ describe("fitToSchema", () => {
   });
 
   it("passes through fields the schema doesn't describe, and values of the wrong shape", () => {
-    expect(fitToSchema({ known: 1.6, extra: 2.4 }, { type: "object", properties: { known: { type: "integer" } } })).toEqual({
+    expect(
+      fitToSchema({ known: 1.6, extra: 2.4 }, { type: "object", properties: { known: { type: "integer" } } }),
+    ).toEqual({
       known: 2,
       extra: 2.4,
     });

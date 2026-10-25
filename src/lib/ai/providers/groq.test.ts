@@ -46,7 +46,10 @@ describe("groqComplete", () => {
       max_completion_tokens: 4096,
       reasoning_effort: "low",
       include_reasoning: false,
-      response_format: { type: "json_schema", json_schema: { name: "test_result", schema: { type: "object" }, strict: true } },
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "test_result", schema: { type: "object" }, strict: true },
+      },
     });
   });
 
@@ -60,7 +63,10 @@ describe("groqComplete", () => {
     vi.stubEnv("GROQ_LITE_MODEL", "llama-3.1-8b-instant");
     await groqComplete(completion({ tier: "smart" }));
     await groqComplete(completion({ tier: "lite" }));
-    for (const [call, model] of [[0, "llama-3.3-70b-versatile"], [1, "llama-3.1-8b-instant"]] as const) {
+    for (const [call, model] of [
+      [0, "llama-3.3-70b-versatile"],
+      [1, "llama-3.1-8b-instant"],
+    ] as const) {
       expect(sent(call).model).toBe(model);
       expect(sent(call)).not.toHaveProperty("reasoning_effort");
       expect(sent(call).response_format.json_schema.strict).toBe(false);

@@ -20,9 +20,7 @@ export function allocateBudget(brief: Pick<EventBrief, "eventType" | "totalBudge
   // Rounding down leaves a little spare; park it in contingency so the draft
   // adds up to the budget exactly.
   const remainder = brief.totalBudget - plannedTotal(lines);
-  return lines.map((line) =>
-    line.category === "contingency" ? { ...line, amount: line.amount + remainder } : line,
-  );
+  return lines.map((line) => (line.category === "contingency" ? { ...line, amount: line.amount + remainder } : line));
 }
 
 /**
@@ -33,9 +31,7 @@ export function scaleForGuests(lines: BudgetLine[], fromGuests: number, toGuests
   if (fromGuests === toGuests) return lines;
   const ratio = toGuests / fromGuests;
   return lines.map((line) =>
-    line.scalesWithGuests && line.source === "estimate"
-      ? { ...line, amount: Math.round(line.amount * ratio) }
-      : line,
+    line.scalesWithGuests && line.source === "estimate" ? { ...line, amount: Math.round(line.amount * ratio) } : line,
   );
 }
 

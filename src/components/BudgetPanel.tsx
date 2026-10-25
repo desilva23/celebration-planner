@@ -149,7 +149,9 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
               <tr key={line.category}>
                 <th scope="row">
                   {categoryLabel(line.category)}
-                  {CATEGORY_META[line.category].scalesWithGuests && <span className="hint block">Scales with guests</span>}
+                  {CATEGORY_META[line.category].scalesWithGuests && (
+                    <span className="hint block">Scales with guests</span>
+                  )}
                 </th>
                 <td>
                   <AmountCell

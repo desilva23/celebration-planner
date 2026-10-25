@@ -116,7 +116,10 @@ export function applyChange(plan: Plan, change: PlanChange, today: string, now: 
   }
 
   if (brief.totalBudget !== before.totalBudget) {
-    effects.push({ tone: "info", message: `Budget: ${formatInr(before.totalBudget)} → ${formatInr(brief.totalBudget)}` });
+    effects.push({
+      tone: "info",
+      message: `Budget: ${formatInr(before.totalBudget)} → ${formatInr(brief.totalBudget)}`,
+    });
   }
 
   if (brief.tier !== before.tier) {
@@ -226,7 +229,10 @@ export function bookVendor(plan: Plan, vendorId: string, now: Date = new Date())
   const line = plan.budget.find((l) => l.category === vendor.category);
   const budget = line
     ? plan.budget.map((l) => (l === line ? { ...l, amount: vendor.quote!, source: "confirmed" as const } : l))
-    : [...plan.budget, { category: vendor.category, amount: vendor.quote, scalesWithGuests: false, source: "confirmed" as const }];
+    : [
+        ...plan.budget,
+        { category: vendor.category, amount: vendor.quote, scalesWithGuests: false, source: "confirmed" as const },
+      ];
   effects.push({
     tone: "info",
     message: line

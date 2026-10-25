@@ -28,8 +28,8 @@ export function TimelinePanel({ plan, today, onChange, onUpdate }: PanelProps) {
     >
       {planWindow.compressed && (
         <p className="callout warning">
-          {planWindow.days} days left, against an ideal {planWindow.idealDays} for this kind of event, so the schedule is compressed.
-          Start with the tasks marked Ready.
+          {planWindow.days} days left, against an ideal {planWindow.idealDays} for this kind of event, so the schedule
+          is compressed. Start with the tasks marked Ready.
         </p>
       )}
       <ul className="task-list">

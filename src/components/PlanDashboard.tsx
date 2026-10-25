@@ -73,7 +73,8 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
         )}
         {upNext && (
           <p className="next-up">
-            <strong>Next up:</strong> {upNext.title}, due {formatDate(upNext.dueDate)}. <a href="#timeline">See the timeline</a>
+            <strong>Next up:</strong> {upNext.title}, due {formatDate(upNext.dueDate)}.{" "}
+            <a href="#timeline">See the timeline</a>
           </p>
         )}
       </section>

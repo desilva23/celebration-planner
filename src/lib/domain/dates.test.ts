@@ -21,7 +21,8 @@ describe("daysBetween", () => {
   });
 
   it("is the inverse of addDays", () => {
-    for (const days of [-400, -1, 0, 1, 59, 366]) expect(daysBetween("2027-01-31", addDays("2027-01-31", days))).toBe(days);
+    for (const days of [-400, -1, 0, 1, 59, 366])
+      expect(daysBetween("2027-01-31", addDays("2027-01-31", days))).toBe(days);
   });
 });
 

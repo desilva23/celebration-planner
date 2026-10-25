@@ -28,7 +28,11 @@ describe("interpretFallback", () => {
       today: TODAY,
     });
     expect(updates).toMatchObject({
-      eventType: "wedding", guestCount: 300, eventDate: "2027-01-20", totalBudget: 1_200_000, tier: "simple",
+      eventType: "wedding",
+      guestCount: 300,
+      eventDate: "2027-01-20",
+      totalBudget: 1_200_000,
+      tier: "simple",
     });
   });
 
@@ -42,7 +46,11 @@ describe("interpretFallback", () => {
   });
 
   it("ignores earlier clauses when picking priorities", () => {
-    const { updates } = interpretFallback({ message: "the venue is booked, food matters most", brief: null, today: TODAY });
+    const { updates } = interpretFallback({
+      message: "the venue is booked, food matters most",
+      brief: null,
+      today: TODAY,
+    });
     expect(updates.priorities).toEqual(["catering"]);
   });
 
@@ -173,7 +181,12 @@ describe("interpretFallback", () => {
     const messages = [
       "We've got 50 more guests now, budget dropped by 80k and the event is happening two weeks earlier",
       "Planning a wedding for 300 guests on 2027-01-20, budget is 12 lakh, keep it simple",
-      "6000 guests", "budget is 20 crore", "2027-13-45", "food matters most", "hello", "",
+      "6000 guests",
+      "budget is 20 crore",
+      "2027-13-45",
+      "food matters most",
+      "hello",
+      "",
     ];
     for (const message of messages) {
       for (const current of [brief, null]) {
@@ -219,7 +232,11 @@ describe("ideasFallback", () => {
 
 describe("vendorBriefFallback", () => {
   it("always covers headcount changes and cancellation", () => {
-    const { questions } = vendorBriefFallback({ category: "catering", brief: weddingBrief(), budgetForCategory: 256_000 });
+    const { questions } = vendorBriefFallback({
+      category: "catering",
+      brief: weddingBrief(),
+      budgetForCategory: 256_000,
+    });
     expect(questions.join(" ")).toMatch(/guest count changes/);
     expect(questions.join(" ")).toMatch(/cancellation/);
   });
@@ -231,18 +248,30 @@ describe("vendorBriefFallback", () => {
   });
 
   it("describes the event, mentioning the city and notes only when there are some", () => {
-    const full = vendorBriefFallback({ category: "venue", brief: weddingBrief({ notes: "x".repeat(300) }), budgetForCategory: 176_000 });
+    const full = vendorBriefFallback({
+      category: "venue",
+      brief: weddingBrief({ notes: "x".repeat(300) }),
+      budgetForCategory: 176_000,
+    });
     expect(full.requirements).toEqual([
       "200 guests on 1 Mar 2027 in Chennai",
       "Planned spend around ₹1,76,000",
       `Your notes: ${"x".repeat(120)}`,
     ]);
-    const bare = vendorBriefFallback({ category: "venue", brief: weddingBrief({ city: "", notes: "" }), budgetForCategory: 0 });
+    const bare = vendorBriefFallback({
+      category: "venue",
+      brief: weddingBrief({ city: "", notes: "" }),
+      budgetForCategory: 0,
+    });
     expect(bare.requirements).toEqual(["200 guests on 1 Mar 2027", "Planned spend around ₹0"]);
   });
 
   it.each(CATEGORIES)("answers within the AI's contract for %s", (category) => {
-    const result = vendorBriefFallback({ category, brief: weddingBrief({ notes: "n".repeat(1000) }), budgetForCategory: 1 });
+    const result = vendorBriefFallback({
+      category,
+      brief: weddingBrief({ notes: "n".repeat(1000) }),
+      budgetForCategory: 1,
+    });
     expect(VendorBriefResultSchema.safeParse(result).success).toBe(true);
   });
 });

@@ -45,7 +45,17 @@ export function ErrorMessage({ children }: { children: ReactNode }) {
   );
 }
 
-export function Section({ id, title, intro, children }: { id: string; title: string; intro?: ReactNode; children: ReactNode }) {
+export function Section({
+  id,
+  title,
+  intro,
+  children,
+}: {
+  id: string;
+  title: string;
+  intro?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section id={id} className="card" aria-labelledby={`${id}-heading`}>
       <h2 id={`${id}-heading`}>{title}</h2>

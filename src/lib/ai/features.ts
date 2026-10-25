@@ -84,8 +84,13 @@ export async function compareQuotes(request: CompareQuotesRequest): Promise<Comp
       return summary
         ? verifyQuoteFigures({ ...summary, label: quote.label }, quote.text)
         : {
-            label: quote.label, total: null, perGuest: null, guestsCovered: null,
-            inclusions: [], extraCharges: [], terms: [],
+            label: quote.label,
+            total: null,
+            perGuest: null,
+            guestsCovered: null,
+            inclusions: [],
+            extraCharges: [],
+            terms: [],
             needsClarification: ["This quote couldn't be read. Check the text and try again."],
           };
     }),

@@ -44,9 +44,7 @@ export function buildTimeline({ eventType, eventDate, today, categories }: Timel
   }));
 }
 
-const ALL_TEMPLATE_CATEGORIES = new Set(
-  TASK_TEMPLATES.flatMap((t) => (t.category === "planning" ? [] : [t.category])),
-);
+const ALL_TEMPLATE_CATEGORIES = new Set(TASK_TEMPLATES.flatMap((t) => (t.category === "planning" ? [] : [t.category])));
 
 /** Re-plans open tasks against a new event date. Finished tasks keep their dates. */
 export function rescheduleOpenTasks(tasks: Task[], eventType: EventType, eventDate: string, today: string): Task[] {

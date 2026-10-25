@@ -32,9 +32,11 @@ describe("PlanDashboard", () => {
       "Next up: Agree the total budget and what matters most, due 7 Nov 2026. See the timeline",
     );
     const nav = screen.getByRole("navigation", { name: "Plan sections" });
-    expect(within(nav).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual([
-      "#change", "#budget", "#timeline", "#vendors", "#ideas",
-    ]);
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((a) => a.getAttribute("href")),
+    ).toEqual(["#change", "#budget", "#timeline", "#vendors", "#ideas"]);
     expect(await axeViolations(container)).toEqual([]);
   });
 

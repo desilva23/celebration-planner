@@ -7,6 +7,7 @@ const UNIT_MULTIPLIER: Record<string, number> = {
   crore: 10_000_000,
 };
 
+// prettier-ignore
 const WORD_NUMBERS: Record<string, number> = {
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
   nine: 9, ten: 10, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, forty: 40, fifty: 50, hundred: 100,

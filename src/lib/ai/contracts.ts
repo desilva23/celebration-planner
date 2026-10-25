@@ -60,7 +60,10 @@ export const GeneratedIdeaSchema = z.object({
   details: z.array(z.string().max(160)).max(6),
   /** The budget line this idea mostly draws on. */
   category: CategorySchema,
-  costBreakdown: z.array(CostRangeSchema.extend({ item: z.string().max(80) })).min(1).max(6),
+  costBreakdown: z
+    .array(CostRangeSchema.extend({ item: z.string().max(80) }))
+    .min(1)
+    .max(6),
   assumptions: z.array(z.string().max(160)).max(4),
 });
 

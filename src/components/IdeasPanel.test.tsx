@@ -9,22 +9,45 @@ import { stubFetch } from "@/test/fetch";
 import { weddingPlan } from "@/test/plan";
 import { IdeasPanel } from "./IdeasPanel";
 
-function idea(title: string, category: Idea["category"], costBreakdown: Idea["costBreakdown"], extra: Partial<Idea> = {}): Idea {
+function idea(
+  title: string,
+  category: Idea["category"],
+  costBreakdown: Idea["costBreakdown"],
+  extra: Partial<Idea> = {},
+): Idea {
   return totalIdeaCost({
-    title, summary: `${title} summary`, whyItFits: `${title} fits`, details: [], category, assumptions: [], costBreakdown, ...extra,
+    title,
+    summary: `${title} summary`,
+    whyItFits: `${title} fits`,
+    details: [],
+    category,
+    assumptions: [],
+    costBreakdown,
+    ...extra,
   });
 }
 
 const IDEAS = [
-  idea("Marigold courtyard", "decor", [{ item: "Flowers", min: 40_000, max: 60_000 }, { item: "Lights", min: 10_000, max: 10_000 }], {
-    details: ["Marigold torans"],
-    assumptions: ["Fresh flowers"],
-  }),
+  idea(
+    "Marigold courtyard",
+    "decor",
+    [
+      { item: "Flowers", min: 40_000, max: 60_000 },
+      { item: "Lights", min: 10_000, max: 10_000 },
+    ],
+    {
+      details: ["Marigold torans"],
+      assumptions: ["Fresh flowers"],
+    },
+  ),
   idea("Grand thali", "catering", [{ item: "Food", min: 300_000, max: 340_000 }]),
   idea("Two photographers", "photography", [{ item: "Coverage", min: 60_000, max: 100_000 }]),
 ];
 
-const reply = (ideas: Idea[], followUpQuestion: string | null = null) => ({ source: "ai", data: { ideas, followUpQuestion } });
+const reply = (ideas: Idea[], followUpQuestion: string | null = null) => ({
+  source: "ai",
+  data: { ideas, followUpQuestion },
+});
 
 function setup(plan: Plan = weddingPlan()) {
   const user = userEvent.setup();
@@ -42,10 +65,15 @@ describe("IdeasPanel", () => {
 
     expect(await screen.findByText("Fits your decor budget of ₹96,000")).toBeInTheDocument();
     expect(card("Grand thali").getByText("₹44,000+ over your catering budget")).toHaveClass("warn-text");
-    expect(card("Two photographers").getByText("May stretch your photography budget of ₹80,000")).toHaveClass("warn-text");
-    expect(card("Marigold courtyard").getByText("Estimate").closest("p")).toHaveTextContent(/^Estimate ₹50,000–₹70,000$/);
+    expect(card("Two photographers").getByText("May stretch your photography budget of ₹80,000")).toHaveClass(
+      "warn-text",
+    );
+    expect(card("Marigold courtyard").getByText("Estimate").closest("p")).toHaveTextContent(
+      /^Estimate ₹50,000–₹70,000$/,
+    );
     expect(card("Marigold courtyard").getByText("Marigold torans")).toBeInTheDocument();
-    const detailLists = (title: string) => screen.getByRole("heading", { name: title }).closest("li")!.querySelectorAll(":scope > ul");
+    const detailLists = (title: string) =>
+      screen.getByRole("heading", { name: title }).closest("li")!.querySelectorAll(":scope > ul");
     expect(detailLists("Marigold courtyard")).toHaveLength(1);
     expect(detailLists("Grand thali")).toHaveLength(0);
     expect(screen.getByText("AI suggestion")).toBeInTheDocument();
@@ -92,7 +120,12 @@ describe("IdeasPanel", () => {
     release(reply([IDEAS[0]]));
     expect(await screen.findByRole("button", { name: "Rework the ideas" })).toBeInTheDocument();
     expect(box).toHaveValue("");
-    expect(api.sent()[1].body).toEqual({ brief: plan.brief, budget: plan.budget, refinement: "Too expensive", previous: IDEAS });
+    expect(api.sent()[1].body).toEqual({
+      brief: plan.brief,
+      budget: plan.budget,
+      refinement: "Too expensive",
+      previous: IDEAS,
+    });
     expect(screen.queryByRole("heading", { name: "Grand thali" })).not.toBeInTheDocument();
   });
 
