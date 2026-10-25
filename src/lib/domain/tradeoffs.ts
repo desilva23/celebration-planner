@@ -5,7 +5,7 @@
 import { CATEGORY_META } from "./assumptions";
 import { plannedTotal, scaleForGuests } from "./budget";
 import { formatInr } from "./format";
-import type { BudgetLine, CategoryId, Plan } from "./schema";
+import { MAX_BUDGET, type BudgetLine, type CategoryId, type Plan } from "./schema";
 
 const CUT_STEP = 100;
 
@@ -86,21 +86,20 @@ export function cutFlexibleLines(
   const needed = Math.ceil(gap / CUT_STEP);
   const target = Math.min(needed, totalRoom);
 
-  const cut = new Map<CategoryId, number>();
-  let assigned = 0;
-  for (const [category, r] of room) {
-    const share = totalRoom === 0 ? 0 : Math.floor((target * r) / totalRoom);
-    cut.set(category, share);
-    assigned += share;
-  }
+  const shares = [...room].map(([category, r]) => ({
+    category,
+    room: r,
+    steps: totalRoom === 0 ? 0 : Math.floor((target * r) / totalRoom),
+  }));
   // Flooring leaves a few steps unassigned; give them to the roomiest lines.
-  let leftover = target - assigned;
-  for (const [category, r] of [...room].sort((a, b) => b[1] - a[1])) {
+  let leftover = target - shares.reduce((sum, s) => sum + s.steps, 0);
+  for (const share of [...shares].sort((a, b) => b.room - a.room)) {
     if (leftover === 0) break;
-    const extra = Math.min(leftover, r - (cut.get(category) ?? 0));
-    cut.set(category, (cut.get(category) ?? 0) + extra);
+    const extra = Math.min(leftover, share.room - share.steps);
+    share.steps += extra;
     leftover -= extra;
   }
+  const cut = new Map(shares.map((s) => [s.category, s.steps]));
 
   const cuts: CutResult["cuts"] = [];
   const budget = lines.map((line) => {
@@ -166,11 +165,14 @@ function trimGuests(plan: Plan, gap: number): TradeoffOption {
 
 function raiseBudget(plan: Plan, gap: number): TradeoffOption {
   const planned = plannedTotal(plan.budget);
+  const feasible = planned <= MAX_BUDGET;
   return {
     id: "raise-budget",
     title: "Keep the plan and raise the budget",
-    impacts: [`Budget goes from ${formatInr(plan.brief.totalBudget)} to ${formatInr(planned)} (+${formatInr(gap)})`],
-    feasible: true,
-    result: { budget: plan.budget, guestCount: plan.brief.guestCount, totalBudget: planned },
+    impacts: feasible
+      ? [`Budget goes from ${formatInr(plan.brief.totalBudget)} to ${formatInr(planned)} (+${formatInr(gap)})`]
+      : [`The plan costs ${formatInr(planned)}, more than the largest budget the planner handles (${formatInr(MAX_BUDGET)})`],
+    feasible,
+    result: { budget: plan.budget, guestCount: plan.brief.guestCount, totalBudget: feasible ? planned : plan.brief.totalBudget },
   };
 }

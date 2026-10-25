@@ -71,11 +71,16 @@ export async function compareQuotes(request: CompareQuotesRequest): Promise<Comp
     model: "lite",
     temperature: 0,
   });
-  // Pair each summary with the quote it came from (by label, falling back to
-  // position) and drop any figure that doesn't appear in that quote's text.
+  // Pair each summary with the quote it came from (by label, using each summary
+  // once so repeated labels stay apart, falling back to position) and drop any
+  // figure that doesn't appear in that quote's text.
+  const claimed = new Set<number>();
   return {
     quotes: request.quotes.map((quote, i) => {
-      const summary = result.quotes.find((q) => q.label === quote.label) ?? result.quotes[i];
+      const byLabel = result.quotes.findIndex((q, j) => !claimed.has(j) && q.label === quote.label);
+      const index = byLabel === -1 ? i : byLabel;
+      claimed.add(index);
+      const summary = result.quotes[index];
       return summary
         ? verifyQuoteFigures({ ...summary, label: quote.label }, quote.text)
         : {

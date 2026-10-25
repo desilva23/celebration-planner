@@ -4,11 +4,11 @@ import { useState } from "react";
 import { CATEGORY_META } from "@/lib/domain/assumptions";
 import { summariseBudget } from "@/lib/domain/budget";
 import { formatInr } from "@/lib/domain/format";
-import { applyChange, applyTradeoff, setBudgetAmount } from "@/lib/domain/plan";
+import { applyChange, applyTradeoff, PlanError, setBudgetAmount } from "@/lib/domain/plan";
 import type { BudgetLine, CategoryId } from "@/lib/domain/schema";
 import { tradeoffOptions, type TradeoffOption } from "@/lib/domain/tradeoffs";
 import type { PanelProps } from "./PlanDashboard";
-import { categoryLabel, Section, SourceBadge } from "./ui";
+import { categoryLabel, ErrorMessage, Section, SourceBadge } from "./ui";
 
 const MAX_PRIORITIES = 4;
 
@@ -16,6 +16,7 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
   const { brief } = plan;
   const summary = summariseBudget(plan.budget, brief);
   const options = tradeoffOptions(plan);
+  const [priorityError, setPriorityError] = useState<string | null>(null);
 
   function choose(option: TradeoffOption) {
     onUpdate(
@@ -30,7 +31,12 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
   function togglePriority(category: CategoryId) {
     const has = brief.priorities.includes(category);
     const priorities = has ? brief.priorities.filter((p) => p !== category) : [...brief.priorities, category];
-    onUpdate(applyChange(plan, { priorities }, today), "Priorities updated");
+    try {
+      onUpdate(applyChange(plan, { priorities }, today), "Priorities updated");
+      setPriorityError(null);
+    } catch (error) {
+      setPriorityError(error instanceof PlanError ? error.message : "Priorities couldn't be updated.");
+    }
   }
 
   return (
@@ -66,9 +72,9 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
         aria-label="Share of the budget that is planned"
       />
 
-      {summary.cateringLooksThin && (
+      {summary.cateringLooksThin && summary.cateringPerGuest !== null && (
         <p className="callout warning">
-          Catering works out to {formatInr(summary.cateringPerGuest ?? 0)} per guest. A {brief.tier} event usually needs
+          Catering works out to {formatInr(summary.cateringPerGuest)} per guest. A {brief.tier} event usually needs
           around {formatInr(summary.cateringAssumption)} (a rough assumption; check with caterers).
         </p>
       )}
@@ -78,6 +84,7 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
           <h3>You’re {formatInr(summary.overBy)} over. What would you rather give up?</h3>
           <fieldset>
             <legend>Protect these when cutting (up to {MAX_PRIORITIES})</legend>
+            {priorityError && <ErrorMessage>{priorityError}</ErrorMessage>}
             <div className="choice-row">
               {plan.budget
                 .filter((l) => l.category !== "contingency" && l.source === "estimate")
@@ -179,7 +186,7 @@ function AmountCell({ line, onCommit }: { line: BudgetLine; onCommit: (amount: n
 
   function commit() {
     const amount = Math.round(Number(value));
-    if (Number.isFinite(amount) && amount >= 0 && amount !== line.amount) onCommit(amount);
+    if (Number.isSafeInteger(amount) && amount >= 0 && amount !== line.amount) onCommit(amount);
     else setValue(String(line.amount));
   }
 

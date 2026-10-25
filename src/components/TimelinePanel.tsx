@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { formatDate } from "@/lib/domain/format";
 import { delayTaskInPlan, setTaskStatus } from "@/lib/domain/plan";
 import type { Task } from "@/lib/domain/schema";
@@ -67,7 +67,7 @@ function TaskRow({ task, health, ready, waitingOn, today, eventDate, onToggle, o
   const status = HEALTH_LABEL[health];
   const id = `task-${task.id}`;
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent) {
     event.preventDefault();
     if (date && date !== task.dueDate) onReschedule(date);
   }

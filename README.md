@@ -93,9 +93,11 @@ npm run dev                  # http://localhost:3000
 
 | Command | Purpose |
 | --- | --- |
-| `npm test` | Unit and route tests (Vitest) |
+| `npm test` | Unit, route and component tests (Vitest) |
+| `npm run test:coverage` | Tests plus a coverage report in `coverage/`; fails below 100% |
 | `npm run typecheck` | Strict TypeScript |
-| `npm run lint` | ESLint with Next.js, React Hooks and jsx-a11y rules |
+| `npm run lint` | ESLint with Next.js, React Hooks, jsx-a11y and type-aware TypeScript rules |
+| `npm run check` | Lint, typecheck and tests with coverage, as CI runs them |
 | `npm run build` | Production build (standalone output) |
 
 ### Deploying to Cloud Run
@@ -116,7 +118,9 @@ For Groq, use `--set-secrets GROQ_API_KEY=groq-api-key:latest` instead. Store ke
 
 **Efficiency.** Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
 
-**Testing.** The domain engine, fallbacks, guards, rate limiter and route handlers are covered, including the full replan scenario above as a single test (`src/lib/domain/plan.test.ts`).
+**Reliability.** Every plan operation checks its result against the same schema used to load saved plans, so no change can store a plan that would fail to load next time. Out-of-range input is refused with a plain-language reason instead.
+
+**Testing.** Statements, branches, functions and lines are all at 100% across `src/`, and the run fails if any of them drops (`vitest.config.mts`). Domain, AI and server code is tested in Node. Components and browser storage are tested in jsdom with Testing Library, driven through labels and roles as a user would, and each panel is checked with axe for accessibility problems. The full replan scenario above is a single test (`src/lib/domain/plan.test.ts`). The built-in fallbacks are held to the same Zod contracts as the model, and plan operations are tested for purity. CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests with coverage and a production build on every push and pull request.
 
 **Accessibility.** Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 375px.
 

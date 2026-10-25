@@ -34,7 +34,11 @@ function portable(value: unknown): unknown {
   const out: Node = {};
   for (const [key, child] of Object.entries(node)) {
     if (key === "$schema" || LIMIT_KEYS.has(key)) continue;
-    out[key] = portable(child);
+    // Keys under `properties` are field names, so a field called "format" stays.
+    out[key] =
+      key === "properties"
+        ? Object.fromEntries(Object.entries(child as Node).map(([field, schema]) => [field, portable(schema)]))
+        : portable(child);
   }
   const hints = hintsFor(node);
   if (hints.length) {

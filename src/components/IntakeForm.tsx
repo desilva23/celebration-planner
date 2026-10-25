@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type SubmitEvent } from "react";
 import type { InterpretResult } from "@/lib/ai/contracts";
 import { useAiCall } from "@/lib/client/api";
 import { BUDGET_WEIGHTS } from "@/lib/domain/assumptions";
@@ -11,6 +11,9 @@ import {
   CATEGORIES,
   EVENT_TYPES,
   EventBriefSchema,
+  MAX_BUDGET,
+  MAX_GUESTS,
+  MIN_BUDGET,
   TIERS,
   type CategoryId,
   type EventType,
@@ -52,8 +55,8 @@ const TIER_COPY: Record<Tier, string> = {
 const FIELD_ERRORS: Partial<Record<keyof FormState, string>> = {
   title: "Give the event a short name (up to 80 characters).",
   eventDate: "Choose the event date.",
-  guestCount: "Enter how many guests you expect, between 1 and 5,000.",
-  totalBudget: "Enter your total budget in rupees, at least ₹1,000.",
+  guestCount: `Enter how many guests you expect, between 1 and ${MAX_GUESTS.toLocaleString("en-IN")}.`,
+  totalBudget: `Enter your total budget in rupees, between ${formatInr(MIN_BUDGET)} and ${formatInr(MAX_BUDGET)}.`,
   city: "Keep the city under 60 characters.",
   notes: "Keep notes under 1,000 characters.",
 };
@@ -71,7 +74,7 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
-  async function fillFromDescription(event: FormEvent) {
+  async function fillFromDescription(event: SubmitEvent) {
     event.preventDefault();
     const envelope = await interpret.run({ message: description, brief: null, today });
     if (!envelope) return;
@@ -89,7 +92,7 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
     }));
   }
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent) {
     event.preventDefault();
     const parsed = EventBriefSchema.safeParse({
       ...form,
@@ -246,7 +249,7 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
               type="number"
               inputMode="numeric"
               min={1}
-              max={5000}
+              max={MAX_GUESTS}
               required
               value={form.guestCount}
               onChange={(e) => update("guestCount", e.target.value)}
@@ -259,7 +262,8 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
               {...fieldProps("totalBudget")}
               type="number"
               inputMode="numeric"
-              min={1000}
+              min={MIN_BUDGET}
+              max={MAX_BUDGET}
               required
               value={form.totalBudget}
               onChange={(e) => update("totalBudget", e.target.value)}

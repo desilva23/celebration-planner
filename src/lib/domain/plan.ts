@@ -1,11 +1,24 @@
 // Plan operations. Every function is pure: it takes a plan and returns a new
 // one, plus a list of human-readable effects describing what moved and why.
 
+import type { z } from "zod";
 import { CATEGORY_META, CATERING_PER_GUEST } from "./assumptions";
 import { allocateBudget, scaleForGuests, setLineAmount, summariseBudget } from "./budget";
 import { daysBetween } from "./dates";
 import { formatDate, formatInr } from "./format";
-import type { CategoryId, EventBrief, Plan, PlanChange, Task, Vendor } from "./schema";
+import {
+  MAX_BUDGET,
+  MAX_GUESTS,
+  MIN_BUDGET,
+  PlanChangeSchema,
+  PlanSchema,
+  type CategoryId,
+  type EventBrief,
+  type Plan,
+  type PlanChange,
+  type Task,
+  type Vendor,
+} from "./schema";
 import { buildTimeline, delayTask, planningWindow, rescheduleOpenTasks, taskHealth } from "./timeline";
 import type { TradeoffOption } from "./tradeoffs";
 
@@ -32,8 +45,27 @@ const BOOKING_TASK: Partial<Record<CategoryId, string>> = {
 
 const label = (category: CategoryId) => CATEGORY_META[category].label;
 
+/** Plain-language limits for the fields a user can push out of range. */
+const LIMIT_MESSAGES: Partial<Record<string, string>> = {
+  guestCount: `Guests have to be a whole number from 1 to ${MAX_GUESTS.toLocaleString("en-IN")}.`,
+  totalBudget: `The budget has to be between ${formatInr(MIN_BUDGET)} and ${formatInr(MAX_BUDGET)}.`,
+  eventDate: "That isn't a real calendar date.",
+};
+
+function rejected(error: z.ZodError): PlanError {
+  const field = String(error.issues[0]?.path.at(-1));
+  return new PlanError(LIMIT_MESSAGES[field] ?? "That change would leave the plan invalid, so it wasn't made.");
+}
+
+/**
+ * Every operation returns its plan through here. A plan that fails the schema
+ * would be silently dropped the next time it loads, so it is refused instead.
+ */
 function stamp(plan: Omit<Plan, "updatedAt">, now: Date): Plan {
-  return { ...plan, updatedAt: now.toISOString() };
+  const next = { ...plan, updatedAt: now.toISOString() };
+  const check = PlanSchema.safeParse(next);
+  if (!check.success) throw rejected(check.error);
+  return next;
 }
 
 export function createPlan(brief: EventBrief, today: string, now: Date = new Date()): Plan {
@@ -45,8 +77,7 @@ export function createPlan(brief: EventBrief, today: string, now: Date = new Dat
     today,
     categories: new Set(budget.map((line) => line.category)),
   });
-  const iso = now.toISOString();
-  return { version: 1, brief, budget, tasks, vendors: [], createdAt: iso, updatedAt: iso };
+  return stamp({ version: 1, brief, budget, tasks, vendors: [], createdAt: now.toISOString() }, now);
 }
 
 /**
@@ -55,6 +86,8 @@ export function createPlan(brief: EventBrief, today: string, now: Date = new Dat
  * the plan over budget is flagged so the user can pick a trade-off.
  */
 export function applyChange(plan: Plan, change: PlanChange, today: string, now: Date = new Date()): PlanUpdate {
+  const checked = PlanChangeSchema.safeParse(change);
+  if (!checked.success) throw rejected(checked.error);
   const before = plan.brief;
   const brief: EventBrief = { ...before, ...change };
   if (brief.eventDate <= today) throw new PlanError("The event date has to be after today.");
@@ -134,10 +167,10 @@ export function applyChange(plan: Plan, change: PlanChange, today: string, now: 
       message: `The plan is now ${formatInr(summary.overBy)} over budget. Choose a trade-off in the budget section.`,
     });
   }
-  if (summary.cateringLooksThin) {
+  if (summary.cateringLooksThin && summary.cateringPerGuest !== null) {
     effects.push({
       tone: "warning",
-      message: `Catering works out to ${formatInr(summary.cateringPerGuest ?? 0)} per guest, well under the ~${formatInr(summary.cateringAssumption)} assumed for a ${brief.tier} event.`,
+      message: `Catering works out to ${formatInr(summary.cateringPerGuest)} per guest, well under the ~${formatInr(summary.cateringAssumption)} assumed for a ${brief.tier} event.`,
     });
   }
 

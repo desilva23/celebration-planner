@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { InterpretResult } from "@/lib/ai/contracts";
 import { useAiCall } from "@/lib/client/api";
 import { addDays } from "@/lib/domain/dates";
 import { formatDate, formatInr } from "@/lib/domain/format";
 import { applyChange, PlanError } from "@/lib/domain/plan";
-import { TIERS, type EventBrief, type PlanChange, type Tier } from "@/lib/domain/schema";
+import {
+  MAX_BUDGET,
+  MAX_GUESTS,
+  MIN_BUDGET,
+  TIERS,
+  type EventBrief,
+  type PlanChange,
+  type Tier,
+} from "@/lib/domain/schema";
 import type { PanelProps } from "./PlanDashboard";
 import { categoryLabel, ErrorMessage, Provenance, Section } from "./ui";
 
@@ -43,7 +51,11 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
   const [message, setMessage] = useState("");
   const [applyError, setApplyError] = useState<string | null>(null);
   const interpret = useAiCall<InterpretResult>("/api/interpret");
-  const proposal = interpret.envelope && !interpret.loading ? toChange(interpret.envelope.data.updates, plan.brief) : null;
+  // After a failed preview the last result is stale, so it isn't offered for applying.
+  const proposal =
+    interpret.envelope && !interpret.loading && !interpret.error
+      ? toChange(interpret.envelope.data.updates, plan.brief)
+      : null;
   const rows = proposal ? describe(proposal, plan.brief) : [];
 
   function apply(change: PlanChange): boolean {
@@ -57,7 +69,7 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
     }
   }
 
-  async function preview(event: FormEvent) {
+  async function preview(event: SubmitEvent) {
     event.preventDefault();
     setApplyError(null);
     await interpret.run({ message, brief: plan.brief, today });
@@ -139,11 +151,11 @@ function ManualEdit({ brief, today, onApply }: { brief: EventBrief; today: strin
   const [eventDate, setEventDate] = useState(brief.eventDate);
   const [tier, setTier] = useState<Tier>(brief.tier);
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent) {
     event.preventDefault();
     onApply({
       guestCount: Math.max(1, Math.round(Number(guestCount)) || brief.guestCount),
-      totalBudget: Math.max(1000, Math.round(Number(totalBudget)) || brief.totalBudget),
+      totalBudget: Math.max(MIN_BUDGET, Math.round(Number(totalBudget)) || brief.totalBudget),
       eventDate: eventDate || brief.eventDate,
       tier,
     });
@@ -153,11 +165,11 @@ function ManualEdit({ brief, today, onApply }: { brief: EventBrief; today: strin
     <form onSubmit={submit} className="grid two">
       <div className="field">
         <label htmlFor="edit-guests">Guests</label>
-        <input id="edit-guests" type="number" inputMode="numeric" min={1} max={5000} value={guestCount} onChange={(e) => setGuestCount(e.target.value)} />
+        <input id="edit-guests" type="number" inputMode="numeric" min={1} max={MAX_GUESTS} value={guestCount} onChange={(e) => setGuestCount(e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor="edit-budget">Total budget (₹)</label>
-        <input id="edit-budget" type="number" inputMode="numeric" min={1000} value={totalBudget} onChange={(e) => setTotalBudget(e.target.value)} />
+        <input id="edit-budget" type="number" inputMode="numeric" min={MIN_BUDGET} max={MAX_BUDGET} value={totalBudget} onChange={(e) => setTotalBudget(e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor="edit-date">Event date</label>

@@ -8,8 +8,10 @@ import {
   CategorySchema,
   EventBriefSchema,
   EventTypeSchema,
+  GuestCountSchema,
   IsoDateSchema,
   TierSchema,
+  TotalBudgetSchema,
 } from "../domain/schema";
 
 /** What every AI endpoint returns, so the UI can label where content came from. */
@@ -33,8 +35,8 @@ export const InterpretResultSchema = z.object({
     eventType: EventTypeSchema.nullable(),
     title: z.string().max(80).nullable(),
     eventDate: IsoDateSchema.nullable(),
-    guestCount: z.number().int().min(1).max(5000).nullable(),
-    totalBudget: z.number().int().min(1000).max(100_000_000).nullable(),
+    guestCount: GuestCountSchema.nullable(),
+    totalBudget: TotalBudgetSchema.nullable(),
     tier: TierSchema.nullable(),
     city: z.string().max(60).nullable(),
     priorities: z.array(CategorySchema).max(4).nullable(),
@@ -98,7 +100,7 @@ export const VendorBriefResultSchema = z.object({
 
 export const CompareQuotesRequestSchema = z.object({
   category: CategorySchema,
-  guestCount: z.number().int().min(1).max(5000),
+  guestCount: GuestCountSchema,
   budgetForCategory: z.number().int().min(0),
   quotes: z
     .array(z.object({ label: z.string().trim().min(1).max(60), text: z.string().trim().min(20).max(3000) }))

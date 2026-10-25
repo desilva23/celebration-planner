@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { CompareQuotesResult, QuoteSummary, VendorBriefResult } from "@/lib/ai/contracts";
 import { newId, useAiCall } from "@/lib/client/api";
 import { formatInr } from "@/lib/domain/format";
@@ -133,10 +133,10 @@ function VendorRow({
   const [quote, setQuote] = useState(vendor.quote === null ? "" : String(vendor.quote));
   const quoteId = `quote-${vendor.id}`;
 
-  function saveQuote(event: FormEvent) {
+  function saveQuote(event: SubmitEvent) {
     event.preventDefault();
     const amount = Math.round(Number(quote));
-    if (quote.trim() && Number.isFinite(amount) && amount >= 0) onSave({ ...vendor, quote: amount, status: "quoted" });
+    if (quote.trim() && Number.isSafeInteger(amount) && amount >= 0) onSave({ ...vendor, quote: amount, status: "quoted" });
   }
 
   return (
@@ -160,11 +160,13 @@ function VendorRow({
             Mark as booked
           </button>
           <button type="button" className="button ghost small" onClick={onRemove}>
-            Remove<span className="visually-hidden"> {vendor.name}</span>
+            Remove{" "}
+            <span className="visually-hidden">{vendor.name}</span>
           </button>
         </div>
       ) : (
-        <p>{formatInr(vendor.quote ?? 0)} confirmed</p>
+        // Never show ₹0 as a confirmed price for a booking with no recorded quote.
+        vendor.quote !== null && <p>{formatInr(vendor.quote)} confirmed</p>
       )}
     </li>
   );
@@ -176,17 +178,18 @@ function AddVendor({ category, onAdd }: { category: CategoryId; onAdd: (v: Vendo
   const [quote, setQuote] = useState("");
   const [notes, setNotes] = useState("");
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent) {
     event.preventDefault();
     if (!name.trim()) return;
     const amount = quote.trim() ? Math.round(Number(quote)) : null;
+    const validQuote = amount !== null && Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
     onAdd({
       id: newId(),
       category,
       name: name.trim().slice(0, 80),
       contact: contact.trim().slice(0, 120),
-      quote: amount !== null && Number.isFinite(amount) && amount >= 0 ? amount : null,
-      status: amount !== null ? "quoted" : "considering",
+      quote: validQuote,
+      status: validQuote !== null ? "quoted" : "considering",
       notes: notes.trim().slice(0, 500),
     });
     setName("");
@@ -247,9 +250,9 @@ function QuoteComparison({
   const setQuote = (i: number, patch: Partial<(typeof quotes)[number]>) =>
     setQuotes((qs) => qs.map((q, j) => (j === i ? { ...q, ...patch } : q)));
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent) {
     event.preventDefault();
-    call.run({ category, guestCount: guests, budgetForCategory, quotes: filled });
+    void call.run({ category, guestCount: guests, budgetForCategory, quotes: filled });
   }
 
   /** Per-guest price × headcount, computed here so it's never presented as the vendor's figure. */
@@ -310,10 +313,11 @@ function QuoteComparison({
                 </tr>
               </thead>
               <tbody>
-                {call.envelope.data.quotes.map((q) => {
+                {call.envelope.data.quotes.map((q, i) => {
                   const total = projected(q);
                   return (
-                    <tr key={q.label}>
+                    // Two quotes can share a label, so rows are keyed by position.
+                    <tr key={i}>
                       <th scope="row">{q.label}</th>
                       <td>
                         {q.total !== null && <div>{formatInr(q.total)} total</div>}

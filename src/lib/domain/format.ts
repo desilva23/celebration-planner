@@ -16,11 +16,6 @@ export function formatInr(amount: number): string {
   return inr.format(amount || 0);
 }
 
-export function formatSignedInr(amount: number): string {
-  if (amount === 0) return formatInr(0);
-  return `${amount > 0 ? "+" : "−"}${formatInr(Math.abs(amount))}`;
-}
-
 export function formatDate(iso: string): string {
   return longDate.format(new Date(`${iso}T00:00:00Z`));
 }

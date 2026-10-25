@@ -51,7 +51,7 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
         <dl className="stats">
           <div>
             <dt>Days to go</dt>
-            <dd>{daysLeft > 0 ? daysLeft : "Today"}</dd>
+            <dd>{daysLeft > 0 ? daysLeft : daysLeft === 0 ? "Today" : "Passed"}</dd>
           </div>
           <div>
             <dt>Planned spend</dt>

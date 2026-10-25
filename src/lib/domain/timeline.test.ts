@@ -1,12 +1,43 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { TODAY } from "./fixtures.test-helpers";
-import type { CategoryId } from "./schema";
+import type { CategoryId, Task } from "./schema";
 import { CATEGORIES } from "./schema";
-import { buildTimeline, delayTask, nextActions, planningWindow } from "./timeline";
+import {
+  blockedBy,
+  buildTimeline,
+  delayTask,
+  nextActions,
+  planningWindow,
+  rescheduleOpenTasks,
+  taskHealth,
+} from "./timeline";
 
 const ALL = new Set<CategoryId>(CATEGORIES);
 const EVENT = "2027-03-01";
+
+const task = (id: string, overrides: Partial<Task> = {}): Task => ({
+  id,
+  title: id,
+  category: "planning",
+  dependsOn: [],
+  startDate: TODAY,
+  dueDate: "2027-01-01",
+  status: "todo",
+  priority: "medium",
+  ...overrides,
+});
+
+describe("planningWindow", () => {
+  it("uses the ideal horizon when there is time, and flags a squeeze when there isn't", () => {
+    expect(planningWindow("wedding", EVENT, TODAY)).toEqual({ days: 120, idealDays: 120, compressed: false });
+    expect(planningWindow("birthday", addDays(TODAY, 10), TODAY)).toEqual({ days: 10, idealDays: 30, compressed: true });
+  });
+
+  it("still gives a one-day window once the event date has passed", () => {
+    expect(planningWindow("wedding", addDays(TODAY, -3), TODAY)).toMatchObject({ days: 1, compressed: true });
+  });
+});
 
 describe("buildTimeline", () => {
   const tasks = buildTimeline({ eventType: "wedding", eventDate: EVENT, today: TODAY, categories: ALL });
@@ -75,6 +106,68 @@ describe("delayTask", () => {
     const { tasks: next } = delayTask(withDone, "venue", addDays(venue.dueDate, 20), EVENT);
     expect(next.find((t) => t.id === "caterer")).toEqual(withDone.find((t) => t.id === "caterer"));
   });
+
+  it("ignores prerequisites that are already done", () => {
+    const list = [
+      task("a", { status: "done", dueDate: "2027-02-01" }),
+      task("b", { dependsOn: ["a"], startDate: "2027-01-01", dueDate: "2027-01-10" }),
+      task("c", { dueDate: "2027-01-05" }),
+    ];
+    expect(delayTask(list, "c", "2027-01-06", EVENT).shifted.map((s) => s.id)).toEqual(["c"]);
+  });
+
+  it("pulls the start in when a task is brought forward", () => {
+    const earlier = addDays(venue.startDate, -5);
+    const moved = delayTask(tasks, "venue", earlier, EVENT).tasks.find((t) => t.id === "venue");
+    expect(moved).toMatchObject({ startDate: earlier, dueDate: earlier });
+  });
+
+  it("records nothing when the date doesn't change", () => {
+    expect(delayTask(tasks, "venue", venue.dueDate, EVENT).shifted).toEqual([]);
+  });
+
+  it("refuses a task that isn't in the plan", () => {
+    expect(() => delayTask(tasks, "nope", EVENT, EVENT)).toThrow("Unknown task: nope");
+  });
+
+  it("returns new tasks instead of editing the ones it was given", () => {
+    const snapshot = structuredClone(tasks);
+    delayTask(tasks, "venue", addDays(venue.dueDate, 45), EVENT);
+    expect(tasks).toEqual(snapshot);
+  });
+});
+
+describe("rescheduleOpenTasks", () => {
+  const tasks = buildTimeline({ eventType: "wedding", eventDate: EVENT, today: TODAY, categories: ALL });
+
+  it("moves open tasks onto the new date's schedule and leaves finished ones alone", () => {
+    const withDone = tasks.map((t) => (t.id === "budget" ? { ...t, status: "done" as const } : t));
+    const earlier = addDays(EVENT, -14);
+    const fresh = new Map(
+      buildTimeline({ eventType: "wedding", eventDate: earlier, today: TODAY, categories: ALL }).map((t) => [t.id, t]),
+    );
+    for (const t of rescheduleOpenTasks(withDone, "wedding", earlier, TODAY)) {
+      if (t.id === "budget") expect(t).toEqual(withDone[0]);
+      else expect(t).toMatchObject({ startDate: fresh.get(t.id)!.startDate, dueDate: fresh.get(t.id)!.dueDate });
+    }
+  });
+
+  it("leaves tasks that didn't come from a template alone", () => {
+    const custom = task("custom");
+    expect(rescheduleOpenTasks([custom], "wedding", EVENT, TODAY)).toEqual([custom]);
+  });
+});
+
+describe("taskHealth", () => {
+  it.each([
+    [{ status: "done" as const, dueDate: "2026-10-01" }, "done"],
+    [{ dueDate: "2026-10-24" }, "overdue"],
+    [{ dueDate: TODAY }, "due-soon"],
+    [{ dueDate: "2026-11-01" }, "due-soon"],
+    [{ dueDate: "2026-11-02" }, "upcoming"],
+  ])("%o is %s", (overrides, health) => {
+    expect(taskHealth(task("t", overrides), TODAY)).toBe(health);
+  });
 });
 
 describe("nextActions", () => {
@@ -84,5 +177,18 @@ describe("nextActions", () => {
     expect(nextActions(tasks).map((t) => t.id)).toEqual(["budget", "attire"]);
     const afterBudget = tasks.map((t) => (t.id === "budget" ? { ...t, status: "done" as const } : t));
     expect(nextActions(afterBudget).map((t) => t.id)).toContain("guests-draft");
+  });
+
+  it("puts the soonest first, breaks ties by priority, and stops at the limit", () => {
+    const list = [task("low", { priority: "low" }), task("high", { priority: "high" }), task("soon", { dueDate: "2026-12-01" })];
+    expect(nextActions(list).map((t) => t.id)).toEqual(["soon", "high", "low"]);
+    expect(nextActions(list, 1).map((t) => t.id)).toEqual(["soon"]);
+  });
+});
+
+describe("blockedBy", () => {
+  it("lists only the prerequisites that are still open", () => {
+    const list = [task("a"), task("b", { status: "done" }), task("c", { dependsOn: ["a", "b", "gone"] })];
+    expect(blockedBy(list[2], list).map((t) => t.id)).toEqual(["a"]);
   });
 });

@@ -1,15 +1,94 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { TODAY, weddingBrief } from "./fixtures.test-helpers";
-import { applyChange, bookVendor, createPlan, PlanError, setTaskStatus, upsertVendor } from "./plan";
-import type { Plan } from "./schema";
+import {
+  applyChange,
+  applyTradeoff,
+  bookVendor,
+  createPlan,
+  delayTaskInPlan,
+  PlanError,
+  removeVendor,
+  setBudgetAmount,
+  setTaskStatus,
+  upsertVendor,
+} from "./plan";
+import { PlanSchema, type Plan, type PlanChange, type Vendor } from "./schema";
 import { tradeoffOptions } from "./tradeoffs";
 
+const NOW = new Date("2026-10-25T06:30:00Z");
+const LATER = new Date("2026-10-26T09:00:00Z");
+
 const line = (plan: Plan, category: string) => plan.budget.find((l) => l.category === category)!;
+const messages = (effects: { message: string }[]) => effects.map((e) => e.message);
+
+const venueVendor: Vendor = {
+  id: "v1", category: "venue", name: "Lotus Hall", contact: "", quote: 150_000, status: "quoted", notes: "",
+};
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object") {
+    Object.values(value).forEach(deepFreeze);
+    Object.freeze(value);
+  }
+  return value;
+}
 
 describe("createPlan", () => {
   it("refuses an event date that isn't in the future", () => {
     expect(() => createPlan(weddingBrief({ eventDate: TODAY }), TODAY)).toThrow(PlanError);
+  });
+
+  it("starts with no vendors and stamps both timestamps with the same moment", () => {
+    const plan = createPlan(weddingBrief(), TODAY, NOW);
+    expect(plan).toMatchObject({ version: 1, vendors: [], createdAt: NOW.toISOString(), updatedAt: NOW.toISOString() });
+  });
+
+  it("only schedules tasks for categories the event has a budget for", () => {
+    const plan = createPlan(weddingBrief({ eventType: "community" }), TODAY);
+    expect(plan.tasks.map((t) => t.id)).not.toContain("attire");
+  });
+});
+
+// A plan that fails the schema is silently dropped the next time the app loads
+// it, so no operation may produce one.
+describe("plan validity", () => {
+  it.each<[PlanChange, RegExp]>([
+    [{ guestCount: 6000 }, /from 1 to 5,000/],
+    [{ guestCount: 0 }, /from 1 to 5,000/],
+    [{ guestCount: 2.5 }, /whole number/],
+    [{ totalBudget: 110_000_000 }, /between ₹1,000 and ₹10,00,00,000/],
+    [{ eventDate: "2027-02-30" }, /isn't a real calendar date/],
+  ])("refuses %o instead of saving a plan that won't load again", (change, message) => {
+    expect(() => applyChange(createPlan(weddingBrief(), TODAY), change, TODAY)).toThrow(message);
+  });
+
+  it("refuses to create a plan that won't load again", () => {
+    expect(() => createPlan(weddingBrief({ guestCount: 6000 }), TODAY)).toThrow(PlanError);
+  });
+
+  it("refuses an amount too large to store, with a general explanation", () => {
+    expect(() => setBudgetAmount(createPlan(weddingBrief(), TODAY), "decor", 2 ** 53)).toThrow(
+      "That change would leave the plan invalid, so it wasn't made.",
+    );
+  });
+
+  it("never edits the plan it was given, and every result passes the schema", () => {
+    const base = upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor);
+    const plan = deepFreeze(base);
+    const over = deepFreeze(applyChange(base, { guestCount: 250 }, TODAY).plan);
+    // Writing to a frozen object throws in strict-mode modules, so any mutation fails here.
+    const results = [
+      applyChange(plan, { guestCount: 250, totalBudget: 700_000, eventDate: "2027-02-01", tier: "premium", priorities: [] }, TODAY).plan,
+      setTaskStatus(plan, "budget", "done"),
+      delayTaskInPlan(plan, "venue", "2027-01-30").plan,
+      setBudgetAmount(plan, "decor", 1),
+      upsertVendor(plan, { ...venueVendor, quote: 1 }),
+      removeVendor(plan, "v1"),
+      bookVendor(plan, "v1").plan,
+      ...tradeoffOptions(over).filter((o) => o.feasible).map((o) => applyTradeoff(over, o)),
+    ];
+    for (const result of results) expect(PlanSchema.safeParse(result).success).toBe(true);
   });
 });
 
@@ -65,6 +144,89 @@ describe("applyChange", () => {
     const plan = createPlan(weddingBrief(), TODAY);
     expect(() => applyChange(plan, { eventDate: addDays(TODAY, -1) }, TODAY)).toThrow(PlanError);
   });
+
+  it("explains a new budget, experience level and priorities", () => {
+    const plan = createPlan(weddingBrief(), TODAY);
+    const { effects } = applyChange(plan, { totalBudget: 820_000, tier: "premium", priorities: ["venue"] }, TODAY);
+    expect(messages(effects)).toEqual([
+      "Budget: ₹8,00,000 → ₹8,20,000",
+      "Experience level: standard → premium. Catering assumption is now about ₹1,600 per guest.",
+      "Protected when cutting: Venue",
+    ]);
+  });
+
+  it("says when nothing is protected any more", () => {
+    const { effects } = applyChange(createPlan(weddingBrief(), TODAY), { priorities: [] }, TODAY);
+    expect(messages(effects)).toEqual(["No categories are protected when cutting"]);
+  });
+
+  it("reschedules when the event is postponed", () => {
+    const plan = createPlan(weddingBrief(), TODAY);
+    const { effects } = applyChange(plan, { eventDate: addDays(plan.brief.eventDate, 10) }, TODAY);
+    expect(messages(effects)[0]).toMatch(/^Event moved 10 days later, to 11 Mar 2027\. \d+ open tasks rescheduled\.$/);
+  });
+
+  it("warns when a new date squeezes the schedule and makes tasks urgent", () => {
+    const { effects } = applyChange(createPlan(weddingBrief(), TODAY), { eventDate: addDays(TODAY, 10) }, TODAY);
+    const warnings = messages(effects.filter((e) => e.tone === "warning"));
+    expect(warnings[0]).toBe("Only 10 days left against an ideal 120, so the schedule is compressed and tasks will overlap.");
+    expect(warnings[1]).toMatch(/^Due within a week: Agree the total budget and what matters most; /);
+  });
+
+  it("warns when catering looks thin for the experience level", () => {
+    const plan = setBudgetAmount(createPlan(weddingBrief(), TODAY), "catering", 100_000);
+    const { effects } = applyChange(plan, { tier: "premium" }, TODAY);
+    expect(effects).toContainEqual({
+      tone: "warning",
+      message: "Catering works out to ₹500 per guest, well under the ~₹1,600 assumed for a premium event.",
+    });
+  });
+
+  it("only restamps the plan when nothing actually changes", () => {
+    const plan = createPlan(weddingBrief(), TODAY, NOW);
+    const { plan: next, effects } = applyChange(plan, {}, TODAY, LATER);
+    expect(effects).toEqual([]);
+    expect(next).toEqual({ ...plan, updatedAt: LATER.toISOString() });
+  });
+});
+
+describe("setTaskStatus", () => {
+  it("marks a task done and back again, stamping each change", () => {
+    const plan = createPlan(weddingBrief(), TODAY, NOW);
+    const done = setTaskStatus(plan, "budget", "done", LATER);
+    expect(done.tasks.find((t) => t.id === "budget")!.status).toBe("done");
+    expect(done.updatedAt).toBe(LATER.toISOString());
+    expect(setTaskStatus(done, "budget", "todo").tasks).toEqual(plan.tasks);
+  });
+});
+
+describe("delayTaskInPlan", () => {
+  const plan = createPlan(weddingBrief(), TODAY);
+  const due = (id: string) => plan.tasks.find((t) => t.id === id)!.dueDate;
+
+  it("reports the delayed task, then every dependent it pushed back", () => {
+    const { effects } = delayTaskInPlan(plan, "venue", addDays(due("venue"), 45));
+    const [summary, delayed, ...pushed] = effects;
+    expect(summary).toEqual({ tone: "warning", message: `${pushed.length} dependent tasks had to move.` });
+    expect(delayed).toMatchObject({ tone: "info", message: expect.stringMatching(/^Shortlist and book the venue: /) });
+    expect(pushed.length).toBeGreaterThan(0);
+    expect(pushed.every((e) => e.tone === "warning")).toBe(true);
+  });
+
+  it("doesn't mention dependents when nothing else had to move", () => {
+    const { effects } = delayTaskInPlan(plan, "run-sheet", addDays(due("run-sheet"), 2));
+    expect(effects).toEqual([{ tone: "info", message: "Write the day-of run sheet: 25 Feb 2027 → 27 Feb 2027" }]);
+  });
+});
+
+describe("upsertVendor / removeVendor", () => {
+  it("adds vendors, replaces one by id in place, and removes one by id", () => {
+    const decorator: Vendor = { ...venueVendor, id: "d1", category: "decor", name: "Petal Works" };
+    let plan = upsertVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), decorator);
+    plan = upsertVendor(plan, { ...venueVendor, quote: 160_000 });
+    expect(plan.vendors).toEqual([{ ...venueVendor, quote: 160_000 }, decorator]);
+    expect(removeVendor(plan, "v1").vendors).toEqual([decorator]);
+  });
 });
 
 describe("bookVendor", () => {
@@ -85,5 +247,31 @@ describe("bookVendor", () => {
       id: "v1", category: "venue", name: "Lotus Hall", contact: "", quote: null, status: "considering", notes: "",
     });
     expect(() => bookVendor(plan, "v1")).toThrow(PlanError);
+  });
+
+  it("refuses a vendor that isn't in the plan", () => {
+    expect(() => bookVendor(createPlan(weddingBrief(), TODAY), "nope")).toThrow("Vendor not found.");
+  });
+
+  it("adds a confirmed line for a category the budget didn't have", () => {
+    let plan = createPlan(weddingBrief({ eventType: "community" }), TODAY);
+    plan = upsertVendor(plan, { ...venueVendor, id: "a1", category: "attire", quote: 20_000 });
+    const { plan: booked, effects } = bookVendor(plan, "a1");
+    expect(line(booked, "attire")).toEqual({ category: "attire", amount: 20_000, scalesWithGuests: false, source: "confirmed" });
+    expect(messages(effects)[0]).toBe("Attire added at ₹20,000");
+  });
+
+  it("doesn't complete a booking task twice", () => {
+    let plan = setTaskStatus(createPlan(weddingBrief(), TODAY), "venue", "done");
+    plan = upsertVendor(plan, venueVendor);
+    expect(messages(bookVendor(plan, "v1").effects)).toEqual(["Venue confirmed at ₹1,50,000 (estimate was ₹1,76,000)"]);
+  });
+
+  it("warns when the booked price pushes the plan over budget", () => {
+    const plan = upsertVendor(createPlan(weddingBrief(), TODAY), { ...venueVendor, quote: 300_000 });
+    expect(bookVendor(plan, "v1").effects.at(-1)).toEqual({
+      tone: "warning",
+      message: "The plan is now ₹1,24,000 over budget.",
+    });
   });
 });

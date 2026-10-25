@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocateBudget, plannedTotal, scaleForGuests, summariseBudget } from "./budget";
+import { allocateBudget, plannedTotal, scaleForGuests, setLineAmount, summariseBudget } from "./budget";
 import { weddingBrief } from "./fixtures.test-helpers";
 
 describe("allocateBudget", () => {
@@ -33,6 +33,19 @@ describe("scaleForGuests", () => {
     const confirmed = lines.map((l) => (l.category === "catering" ? { ...l, source: "confirmed" as const } : l));
     expect(amount(scaleForGuests(confirmed, 200, 250), "catering")).toBe(amount(lines, "catering"));
   });
+
+  it("returns the same lines when the headcount hasn't changed", () => {
+    expect(scaleForGuests(lines, 200, 200)).toBe(lines);
+  });
+});
+
+describe("setLineAmount", () => {
+  it("changes only the named line", () => {
+    const lines = allocateBudget(weddingBrief());
+    const next = setLineAmount(lines, "decor", 50_000);
+    expect(next.find((l) => l.category === "decor")!.amount).toBe(50_000);
+    expect(next.filter((l) => l.category !== "decor")).toEqual(lines.filter((l) => l.category !== "decor"));
+  });
 });
 
 describe("summariseBudget", () => {
@@ -47,5 +60,17 @@ describe("summariseBudget", () => {
     const brief = weddingBrief({ guestCount: 1000, totalBudget: 200_000 });
     expect(summariseBudget(allocateBudget(brief), brief).cateringLooksThin).toBe(true);
     expect(summariseBudget(allocateBudget(weddingBrief()), weddingBrief()).cateringLooksThin).toBe(false);
+  });
+
+  it("totals confirmed prices separately from estimates", () => {
+    const lines = allocateBudget(weddingBrief()).map((l) =>
+      l.category === "venue" || l.category === "decor" ? { ...l, source: "confirmed" as const } : l,
+    );
+    expect(summariseBudget(lines, weddingBrief()).confirmed).toBe(176_000 + 96_000);
+  });
+
+  it("has no per-guest catering figure without a catering line", () => {
+    const lines = allocateBudget(weddingBrief()).filter((l) => l.category !== "catering");
+    expect(summariseBudget(lines, weddingBrief())).toMatchObject({ cateringPerGuest: null, cateringLooksThin: false });
   });
 });

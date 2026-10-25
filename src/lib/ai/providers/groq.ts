@@ -4,6 +4,12 @@ import type { Completion } from "../llm";
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
+/** The parts of a Groq reply this client reads. All optional: error bodies vary. */
+interface GroqReply {
+  error?: { message?: unknown };
+  choices?: { message?: { content?: unknown }; finish_reason?: string }[];
+}
+
 function model(tier: Completion["tier"]): string {
   return tier === "smart"
     ? process.env.GROQ_MODEL || "openai/gpt-oss-120b"
@@ -43,11 +49,12 @@ export async function groqComplete(request: Completion): Promise<string> {
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const detail = typeof body?.error?.message === "string" ? `: ${body.error.message.slice(0, 200)}` : "";
+    const body = (await response.json().catch(() => null)) as GroqReply | null;
+    const message = body?.error?.message;
+    const detail = typeof message === "string" ? `: ${message.slice(0, 200)}` : "";
     throw new AiProviderError(`Groq returned ${response.status}${detail}`, response.status);
   }
-  const data = await response.json();
+  const data = (await response.json()) as GroqReply | null;
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string" || !content.trim()) {
     throw new AiResponseError(`Groq returned no content (finish_reason: ${data?.choices?.[0]?.finish_reason ?? "unknown"})`);

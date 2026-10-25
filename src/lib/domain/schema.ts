@@ -14,17 +14,23 @@ export const CATEGORIES = [
   "contingency",
 ] as const;
 
+export const MAX_GUESTS = 5000;
+export const MIN_BUDGET = 1000;
+export const MAX_BUDGET = 100_000_000;
+
 export const EventTypeSchema = z.enum(EVENT_TYPES);
 export const TierSchema = z.enum(TIERS);
 export const CategorySchema = z.enum(CATEGORIES);
 export const IsoDateSchema = z.iso.date();
+export const GuestCountSchema = z.number().int().min(1).max(MAX_GUESTS);
+export const TotalBudgetSchema = z.number().int().min(MIN_BUDGET).max(MAX_BUDGET);
 
 export const EventBriefSchema = z.object({
   eventType: EventTypeSchema,
   title: z.string().trim().min(1).max(80),
   eventDate: IsoDateSchema,
-  guestCount: z.number().int().min(1).max(5000),
-  totalBudget: z.number().int().min(1000).max(100_000_000),
+  guestCount: GuestCountSchema,
+  totalBudget: TotalBudgetSchema,
   tier: TierSchema,
   city: z.string().trim().max(60),
   /** Categories the user wants protected when the plan has to be cut. */

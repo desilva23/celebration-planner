@@ -14,8 +14,11 @@ async function postJson<T>(path: string, body: unknown): Promise<AiEnvelope<T>> 
   } catch {
     throw new Error("Couldn't reach the server. Check your connection and try again.");
   }
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.error ?? `Request failed (${response.status}).`);
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = (data as { error?: unknown } | null)?.error;
+    throw new Error(typeof message === "string" ? message : `Request failed (${response.status}).`);
+  }
   return data as AiEnvelope<T>;
 }
 
@@ -37,7 +40,12 @@ export function useAiCall<T>(path: string) {
         setState({ status: "done", envelope });
         return envelope;
       } catch (error) {
-        setState({ status: "error", error: error instanceof Error ? error.message : "Something went wrong." });
+        // Keep the last good result, so a failed follow-up doesn't wipe what the user had.
+        setState((s) => ({
+          status: "error",
+          error: error instanceof Error ? error.message : "Something went wrong.",
+          envelope: "envelope" in s ? s.envelope : undefined,
+        }));
         return null;
       }
     },

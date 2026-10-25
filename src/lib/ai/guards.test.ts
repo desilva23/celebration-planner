@@ -33,4 +33,20 @@ describe("verifyQuoteFigures", () => {
     expect(checked.total).toBeNull();
     expect(checked.needsClarification[0]).toMatch(/isn't stated in the quote/);
   });
+
+  it("checks every figure, puts its own notes first and keeps at most six", () => {
+    const checked = verifyQuoteFigures(
+      summary({ total: 1, perGuest: 2, guestsCovered: 350, needsClarification: ["a", "b", "c", "d", "e"] }),
+      text,
+    );
+    expect(checked).toMatchObject({ total: null, perGuest: null, guestsCovered: null });
+    expect(checked.needsClarification).toEqual([
+      "Coverage for 350 guests isn't stated in the quote, so it was left out. Confirm with the vendor.",
+      "A per-guest price of ₹2 isn't stated in the quote, so it was left out. Confirm with the vendor.",
+      "A total of ₹1 isn't stated in the quote, so it was left out. Confirm with the vendor.",
+      "a",
+      "b",
+      "c",
+    ]);
+  });
 });

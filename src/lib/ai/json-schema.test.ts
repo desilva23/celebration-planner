@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { CompareQuotesResultSchema, GeneratedIdeasSchema, IdeasResultSchema, InterpretResultSchema } from "./contracts";
+import { z } from "zod";
+import {
+  CompareQuotesResultSchema,
+  GeneratedIdeasSchema,
+  IdeasResultSchema,
+  InterpretResultSchema,
+  VendorBriefResultSchema,
+} from "./contracts";
 import { fitToSchema, responseSchemas } from "./json-schema";
+
+type Described = Record<string, { description?: string; anyOf?: { description?: string }[] }>;
+const props = (node: Record<string, unknown>) => node.properties as Described;
 
 const LIMIT_KEYS = ["maxLength", "minLength", "pattern", "format", "maxItems", "minItems", "minimum", "maximum"];
 
@@ -19,6 +29,7 @@ describe("responseSchemas", () => {
   it.each([
     ["interpret", InterpretResultSchema],
     ["ideas", GeneratedIdeasSchema],
+    ["vendor brief", VendorBriefResultSchema],
     ["quotes", CompareQuotesResultSchema],
   ])("sends a portable %s schema that strict mode accepts", (_, schema) => {
     const { portable } = responseSchemas(schema);
@@ -44,6 +55,27 @@ describe("responseSchemas", () => {
     const understood = (portable.properties as Record<string, { description?: string }>).understood;
     expect(understood.description).toMatch(/at most 300 characters/);
   });
+
+  it("turns dates, item counts and numeric bounds into hints", () => {
+    const updates = props(responseSchemas(InterpretResultSchema).portable).updates as unknown as Record<string, unknown>;
+    expect(props(updates).eventDate.anyOf![0].description).toBe("a date as YYYY-MM-DD");
+    expect(props(updates).guestCount.anyOf![0].description).toBe("minimum 1; maximum 5000");
+    expect(props(responseSchemas(GeneratedIdeasSchema).portable).ideas.description).toBe("at least 1 items; at most 4 items");
+  });
+
+  it("adds hints after an existing description, and skips Zod's default integer bounds", () => {
+    const { portable } = responseSchemas(z.object({ total: z.string().max(5).describe("The total"), count: z.number().int() }));
+    expect(props(portable).total.description).toBe("The total; at most 5 characters");
+    expect(props(portable).count.description).toBeUndefined();
+  });
+
+  // Regression: field names under `properties` used to be stripped like keywords.
+  it("keeps fields whose names look like schema keywords", () => {
+    const { portable } = responseSchemas(z.object({ format: z.string(), pattern: z.string().max(10), minimum: z.number() }));
+    expect(Object.keys(props(portable))).toEqual(["format", "pattern", "minimum"]);
+    expect(portable.required).toEqual(["format", "pattern", "minimum"]);
+    expect(props(portable).pattern.description).toBe("at most 10 characters");
+  });
 });
 
 describe("fitToSchema", () => {
@@ -65,5 +97,30 @@ describe("fitToSchema", () => {
   it("leaves genuinely wrong replies for validation to reject", () => {
     const fitted = fitToSchema({ ideas: [{ category: "not-a-category" }], followUpQuestion: null }, full);
     expect(IdeasResultSchema.safeParse(fitted).success).toBe(false);
+  });
+
+  it("keeps nulls in nullable fields and fits the value otherwise", () => {
+    const nullable = { anyOf: [{ type: "string", maxLength: 3 }, { type: "null" }] };
+    expect(fitToSchema(null, nullable)).toBeNull();
+    expect(fitToSchema("abcdef", nullable)).toBe("ab…");
+    expect(fitToSchema("x", { anyOf: [{ type: "null" }] })).toBe("x");
+  });
+
+  it("leaves short strings, unlimited arrays and untyped items alone", () => {
+    expect(fitToSchema("abc", { type: "string", maxLength: 3 })).toBe("abc");
+    expect(fitToSchema("abcdef", { type: "string" })).toBe("abcdef");
+    expect(fitToSchema([1.4, 2.6], { type: "array", items: { type: "integer" } })).toEqual([1, 3]);
+    expect(fitToSchema([1.5, "x"], { type: "array", maxItems: 1 })).toEqual([1.5]);
+  });
+
+  it("passes through fields the schema doesn't describe, and values of the wrong shape", () => {
+    expect(fitToSchema({ known: 1.6, extra: 2.4 }, { type: "object", properties: { known: { type: "integer" } } })).toEqual({
+      known: 2,
+      extra: 2.4,
+    });
+    expect(fitToSchema({ a: 1.5 }, { type: "object" })).toEqual({ a: 1.5 });
+    expect(fitToSchema([1], { type: "object", properties: {} })).toEqual([1]);
+    expect(fitToSchema(7, { type: "string", maxLength: 1 })).toBe(7);
+    expect(fitToSchema(null, { type: "object" })).toBeNull();
   });
 });

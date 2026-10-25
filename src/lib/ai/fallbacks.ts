@@ -5,7 +5,16 @@
 import { CATEGORY_META } from "../domain/assumptions";
 import { addDays, daysBetween } from "../domain/dates";
 import { formatDate, formatInr } from "../domain/format";
-import type { CategoryId, EventType } from "../domain/schema";
+import {
+  GuestCountSchema,
+  IsoDateSchema,
+  MAX_BUDGET,
+  MAX_GUESTS,
+  MIN_BUDGET,
+  TotalBudgetSchema,
+  type CategoryId,
+  type EventType,
+} from "../domain/schema";
 import type {
   IdeasRequest,
   IdeasResult,
@@ -57,7 +66,7 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   for (const [pattern, type] of EVENT_KEYWORDS) {
     if (!brief && pattern.test(text)) {
       updates.eventType = type;
-      understood.push(`a ${type}`);
+      understood.push(`${/^[aeiou]/.test(type) ? "an" : "a"} ${type}`);
       break;
     }
   }
@@ -71,6 +80,10 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   } else if (absolute) {
     updates.guestCount = parseCount(absolute[1]);
   }
+  if (updates.guestCount !== null && !GuestCountSchema.safeParse(updates.guestCount).success) {
+    updates.guestCount = null;
+    clarifyingQuestion = `How many guests should the plan be for? It handles up to ${MAX_GUESTS.toLocaleString("en-IN")}.`;
+  }
   if (updates.guestCount !== null) understood.push(`${updates.guestCount} guests`);
 
   // Budget: "budget dropped by 80k", "budget is 8 lakh", "₹5,00,000".
@@ -81,7 +94,7 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
     const delta = parseAmount(shift[2], shift[3]);
     if (delta !== null) {
       const down = /dropped|reduced|cut|decreased|fell|down/.test(shift[1]);
-      updates.totalBudget = Math.max(1000, brief.totalBudget + (down ? -delta : delta));
+      updates.totalBudget = Math.max(MIN_BUDGET, brief.totalBudget + (down ? -delta : delta));
     }
   } else if (set) {
     updates.totalBudget = parseAmount(set[1], set[2]);
@@ -90,7 +103,14 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   } else if (/budget\s+(?:has\s+)?(dropped|reduced|cut|decreased|fell|went down|shrank)/.test(text)) {
     clarifyingQuestion = "By how much did the budget change? A rough figure is fine.";
   }
-  if (updates.totalBudget !== null && updates.totalBudget < 1000) updates.totalBudget = null;
+  if (updates.totalBudget !== null && !TotalBudgetSchema.safeParse(updates.totalBudget).success) {
+    // A figure under the minimum is more likely a price than a budget, so it is
+    // ignored; one over the maximum was meant as a budget and is worth asking about.
+    if (updates.totalBudget > MAX_BUDGET) {
+      clarifyingQuestion = `The planner handles budgets up to ${formatInr(MAX_BUDGET)}. What total should it use?`;
+    }
+    updates.totalBudget = null;
+  }
   if (updates.totalBudget !== null) understood.push(`a budget of ${formatInr(updates.totalBudget)}`);
 
   // Date: explicit ISO date, or a shift such as "two weeks earlier" / "postponed by 10 days".
@@ -114,7 +134,10 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
     }
   }
   if (updates.eventDate !== null) {
-    if (daysBetween(today, updates.eventDate) <= 0) {
+    if (!IsoDateSchema.safeParse(updates.eventDate).success) {
+      updates.eventDate = null;
+      clarifyingQuestion = "That date isn't on the calendar. What's the new date?";
+    } else if (daysBetween(today, updates.eventDate) <= 0) {
       updates.eventDate = null;
       clarifyingQuestion = "That date would be in the past. What's the new date?";
     } else {
@@ -126,7 +149,8 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   const emphasis = text.match(/([^.;]*?)\b(matters?|are|is)\s+(most|important|the priority|a priority)|care (?:most )?about ([^.;]*)/);
   if (emphasis) {
     // Only the clause right before "matters most" counts, not the whole message.
-    const phrase = (emphasis[1] ?? emphasis[4] ?? "").split(",").pop() ?? "";
+    const clause = emphasis[1] ?? emphasis[4];
+    const phrase = clause.slice(clause.lastIndexOf(",") + 1);
     const priorities = PRIORITY_KEYWORDS.filter(([pattern]) => pattern.test(phrase)).map(([, c]) => c);
     if (priorities.length) {
       updates.priorities = priorities.slice(0, 4);

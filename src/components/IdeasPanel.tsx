@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { Idea, IdeasResult } from "@/lib/ai/contracts";
 import { useAiCall } from "@/lib/client/api";
 import { formatInr } from "@/lib/domain/format";
@@ -24,10 +24,10 @@ export function IdeasPanel({ plan }: { plan: Plan }) {
   const result = call.envelope?.data;
 
   function suggest() {
-    call.run({ brief: plan.brief, budget: plan.budget });
+    void call.run({ brief: plan.brief, budget: plan.budget });
   }
 
-  async function refine(event: FormEvent) {
+  async function refine(event: SubmitEvent) {
     event.preventDefault();
     const done = await call.run({ brief: plan.brief, budget: plan.budget, refinement, previous: result?.ideas });
     if (done) setRefinement("");
