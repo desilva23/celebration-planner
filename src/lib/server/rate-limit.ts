@@ -26,8 +26,24 @@ export function createRateLimiter({ limit, windowMs }: { limit: number; windowMs
   };
 }
 
-export function clientKey(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "anonymous"
-  );
+/** TRUSTED_PROXY_HOPS as a whole number of at least 1; anything else means 1. */
+export function trustedProxyHops(env: Record<string, string | undefined> = process.env): number {
+  const hops = Number(env.TRUSTED_PROXY_HOPS ?? 1);
+  return Number.isInteger(hops) && hops >= 1 ? hops : 1;
+}
+
+/**
+ * The client's address, for rate limiting. Each proxy appends the address it
+ * received the request from to X-Forwarded-For, so only the right-most entries
+ * were written by infrastructure you run; anything to their left came from the
+ * client and can be forged. `hops` counts back from the right: 1 suits Cloud
+ * Run's run.app URL, Vercel and a single reverse proxy; 2 suits an external
+ * Google Cloud load balancer, which appends the client and then itself.
+ */
+export function clientKey(request: Request, hops: number = trustedProxyHops()): string {
+  const chain = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return chain[Math.max(0, chain.length - hops)] || request.headers.get("x-real-ip") || "anonymous";
 }

@@ -15,6 +15,26 @@ function fail(status: number, message: string, headers?: Record<string, string>,
   return Response.json({ error: message, ...(issues ? { issues } : {}) }, { status, headers });
 }
 
+/**
+ * Reads the body but gives up once it passes `limit` bytes, so a request that
+ * doesn't declare its size can't make the server buffer an unbounded upload.
+ */
+async function readBody(request: Request, limit: number): Promise<string | null> {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (let next = await reader.read(); !next.done; next = await reader.read()) {
+    size += next.value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(next.value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
+
 /** Rejects browser requests from other sites so they can't spend this server's AI quota. */
 function fromThisSite(request: Request): boolean {
   const origin = request.headers.get("origin");
@@ -54,8 +74,8 @@ export function aiRoute<I, O>({ name, input, run, fallback }: AiRouteOptions<I, 
     if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
       return fail(413, "Request is too large.");
     }
-    const raw = await request.text();
-    if (raw.length > MAX_BODY_BYTES) return fail(413, "Request is too large.");
+    const raw = await readBody(request, MAX_BODY_BYTES);
+    if (raw === null) return fail(413, "Request is too large.");
 
     let body: unknown;
     try {

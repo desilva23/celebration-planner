@@ -30,6 +30,20 @@ function post(body: unknown, headers: Record<string, string> = {}): Request {
   });
 }
 
+/** A body sent as a stream, so it has no Content-Length, like a chunked upload. */
+function streamed(chunks: string[], onCancel: () => void = () => {}): Request {
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    },
+    cancel: onCancel,
+  });
+  const init = { method: "POST", headers: { ...client(), host: "localhost:3000" }, body, duplex: "half" };
+  return new Request("http://localhost:3000/api/x", init);
+}
+
 beforeEach(() => {
   delete process.env.GEMINI_API_KEY;
   delete process.env.GROQ_API_KEY;
@@ -179,6 +193,34 @@ describe("aiRoute", () => {
   it("refuses a body whose declared size is too large before reading it", async () => {
     const res = await route(async () => "ok")(post({ message: "hi" }, { ...client(), "content-length": "40000" }));
     expect(res.status).toBe(413);
+  });
+
+  // Regression: a body with no Content-Length used to be read in full before
+  // its size was checked, so a large upload was buffered first.
+  it("stops reading a streamed body as soon as it passes the limit", async () => {
+    let cancelled = false;
+    const chunk = "x".repeat(10_000);
+    const res = await route(async () => "ok")(streamed([chunk, chunk, chunk, chunk, chunk], () => (cancelled = true)));
+    expect(res.status).toBe(413);
+    expect(cancelled).toBe(true);
+  });
+
+  it("measures the limit in bytes, not characters", async () => {
+    // 11,000 rupee signs are 11,000 characters but 33,000 bytes.
+    const res = await route(async () => "ok")(streamed([JSON.stringify({ message: "₹".repeat(11_000) })]));
+    expect(res.status).toBe(413);
+  });
+
+  it("reads a streamed body that fits, across several chunks", async () => {
+    const res = await route(async ({ message }) => message)(streamed(['{"mess', 'age":"₹ ok"}']));
+    expect(await res.json()).toEqual({ source: "ai", data: "₹ ok" });
+  });
+
+  it("treats a request with no body as invalid JSON", async () => {
+    const res = await route(async () => "ok")(
+      new Request("http://localhost:3000/api/x", { method: "POST", headers: { ...client(), host: "localhost:3000" } }),
+    );
+    expect(res.status).toBe(400);
   });
 
   it("accepts a same-site request that arrives through a proxy", async () => {

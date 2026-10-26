@@ -116,7 +116,7 @@ For Groq, use `--set-secrets GROQ_API_KEY=groq-api-key:latest` instead. Store ke
 
 ## Quality notes
 
-**Security.** API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped and validated with Zod. Cross-site browser requests are refused, and each client is rate-limited. User text is fenced as data in prompts, and model output is schema-checked. Responses carry a Content-Security-Policy and other security headers. User content is never logged.
+**Security.** API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts and styles never run, plus other security headers. User content is never logged.
 
 **Efficiency.** Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
 
