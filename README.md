@@ -1,5 +1,7 @@
 # Celebration Planner
 
+[![CI](https://github.com/desilva23/celebration-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/desilva23/celebration-planner/actions/workflows/ci.yml)
+
 A GenAI planning assistant for weddings, birthdays and community events. It builds a budget, a schedule in the right order and a vendor checklist from a short brief. When something changes, it **revises the plan instead of starting over**.
 
 > PromptWars Virtual, Challenge 5: Celebration & Event Planner
@@ -83,7 +85,7 @@ src/
 
 ## Running it
 
-Requires Node 22.12+.
+Requires Node 22 (pinned in `.nvmrc`, the same version CI and the Docker image use).
 
 ```bash
 npm install
@@ -129,3 +131,7 @@ For Groq, use `--set-secrets GROQ_API_KEY=groq-api-key:latest` instead. Store ke
 - Plans are stored in the browser only, so there is no sharing or sync across devices.
 - The rate limiter and cache are per server instance.
 - Budget weights and per-guest assumptions are illustrative starting points (`src/lib/domain/assumptions.ts`), not market data.
+
+## License
+
+[MIT](LICENSE)

@@ -21,8 +21,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          # Same major version as the production image in the Dockerfile.
-          node-version: 22
+          # .nvmrc pins the same major version as the production image (Dockerfile).
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run format:check
