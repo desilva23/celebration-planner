@@ -12,6 +12,7 @@ import { BudgetPanel } from "./BudgetPanel";
 import { ChangePanel } from "./ChangePanel";
 import { EffectsToast, type EffectsReport } from "./EffectsToast";
 import { GuestsPanel } from "./GuestsPanel";
+import { PlanSharing } from "./PlanSharing";
 import { IdeasPanel } from "./IdeasPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { EVENT_TYPE_LABEL } from "./ui";
@@ -101,6 +102,7 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
             <strong>Next payment:</strong> {describe(payments.next)}.
           </p>
         )}
+        <PlanSharing plan={plan} />
       </section>
 
       <nav className="section-nav" aria-label="Plan sections">

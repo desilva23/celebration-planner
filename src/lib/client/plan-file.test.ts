@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { captureDownloads } from "@/test/downloads";
 import { vendor, weddingPlan } from "@/test/plan";
-import { downloadFile, parsePlan } from "./plan-file";
+import { downloadFile, fileSlug, parsePlan } from "./plan-file";
 
 describe("parsePlan", () => {
   it("reads a plan back from its JSON", () => {
@@ -29,6 +29,17 @@ describe("parsePlan", () => {
     ["isn't a plan this version understands", JSON.stringify({ ...weddingPlan(), version: 2 })],
   ])("returns null for text that %s", (_, text) => {
     expect(parsePlan(text)).toBeNull();
+  });
+});
+
+describe("fileSlug", () => {
+  it("makes a safe file name from the plan title", () => {
+    expect(fileSlug("Anu & Ravi's Wedding!")).toBe("anu-ravi-s-wedding");
+    expect(fileSlug("  --Diwali 2027--  ")).toBe("diwali-2027");
+  });
+
+  it("falls back to a generic name when nothing usable is left", () => {
+    expect(fileSlug("₹ ★")).toBe("celebration-plan");
   });
 });
 

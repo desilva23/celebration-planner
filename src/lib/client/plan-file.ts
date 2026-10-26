@@ -12,6 +12,15 @@ export function parsePlan(text: string): Plan | null {
   }
 }
 
+/** A file name from the plan's title: "Anu & Ravi's wedding" → "anu-ravi-s-wedding". */
+export function fileSlug(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "celebration-plan";
+}
+
 /** Hands `text` to the browser as a file to save. */
 export function downloadFile(name: string, text: string, type = "application/json"): void {
   const url = URL.createObjectURL(new Blob([text], { type }));
