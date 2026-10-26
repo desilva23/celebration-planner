@@ -85,12 +85,22 @@ export const VendorSchema = z.object({
   payments: z.array(PaymentSchema).max(20).default([]),
 });
 
+/** One invitation: a household or group, how many people it covers, and their reply. */
+export const GuestSchema = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().trim().min(1).max(80),
+  partySize: z.number().int().min(1).max(50),
+  rsvp: z.enum(["pending", "yes", "no"]),
+});
+
 export const PlanSchema = z.object({
   version: z.literal(1),
   brief: EventBriefSchema,
   budget: z.array(BudgetLineSchema),
   tasks: z.array(TaskSchema),
   vendors: z.array(VendorSchema),
+  /** Added after plans were first saved, so older plans load with an empty list. */
+  guests: z.array(GuestSchema).max(2000).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -113,5 +123,7 @@ export type BudgetLine = z.infer<typeof BudgetLineSchema>;
 export type Task = z.infer<typeof TaskSchema>;
 export type Payment = z.infer<typeof PaymentSchema>;
 export type Vendor = z.infer<typeof VendorSchema>;
+export type Guest = z.infer<typeof GuestSchema>;
+export type Rsvp = Guest["rsvp"];
 export type Plan = z.infer<typeof PlanSchema>;
 export type PlanChange = z.infer<typeof PlanChangeSchema>;

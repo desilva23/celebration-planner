@@ -9,6 +9,13 @@ describe("parsePlan", () => {
     expect(parsePlan(JSON.stringify(plan))).toEqual(plan);
   });
 
+  it("opens plans saved before the guest list existed", () => {
+    const plan = weddingPlan();
+    const saved = JSON.parse(JSON.stringify(plan)) as Record<string, unknown>;
+    delete saved.guests;
+    expect(parsePlan(JSON.stringify(saved))).toEqual(plan);
+  });
+
   it("opens plans saved before vendors had payments", () => {
     const plan = { ...weddingPlan(), vendors: [vendor({ quote: 150_000, status: "quoted" })] };
     const saved = JSON.parse(JSON.stringify(plan)) as { vendors: Record<string, unknown>[] };

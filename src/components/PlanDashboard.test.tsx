@@ -26,8 +26,8 @@ const stat = (name: string) => screen.getByText(name, { selector: "dt" }).nextEl
 
 async function reviseGuests(user: ReturnType<typeof userEvent.setup>, guests: string) {
   await user.click(screen.getByText("Or edit the details directly"));
-  await user.clear(screen.getByLabelText("Guests"));
-  await user.type(screen.getByLabelText("Guests"), guests);
+  await user.clear(screen.getByRole("spinbutton", { name: "Guests" }));
+  await user.type(screen.getByRole("spinbutton", { name: "Guests" }), guests);
   await user.click(screen.getByRole("button", { name: "Update the plan" }));
 }
 
@@ -51,7 +51,7 @@ describe("PlanDashboard", () => {
       within(nav)
         .getAllByRole("link")
         .map((a) => a.getAttribute("href")),
-    ).toEqual(["#change", "#budget", "#timeline", "#vendors", "#ideas"]);
+    ).toEqual(["#change", "#budget", "#timeline", "#vendors", "#guests", "#ideas"]);
     expect(await axeViolations(container)).toEqual([]);
   });
 

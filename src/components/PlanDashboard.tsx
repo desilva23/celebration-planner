@@ -11,6 +11,7 @@ import { nextActions } from "@/lib/domain/timeline";
 import { BudgetPanel } from "./BudgetPanel";
 import { ChangePanel } from "./ChangePanel";
 import { EffectsToast, type EffectsReport } from "./EffectsToast";
+import { GuestsPanel } from "./GuestsPanel";
 import { IdeasPanel } from "./IdeasPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { EVENT_TYPE_LABEL } from "./ui";
@@ -107,6 +108,7 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
         <a href="#budget">Budget</a>
         <a href="#timeline">Timeline</a>
         <a href="#vendors">Vendors</a>
+        <a href="#guests">Guests</a>
         <a href="#ideas">Ideas</a>
       </nav>
 
@@ -114,6 +116,7 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
       <BudgetPanel {...panel} />
       <TimelinePanel {...panel} />
       <VendorPanel {...panel} />
+      <GuestsPanel {...panel} />
       <IdeasPanel plan={plan} />
 
       <EffectsToast

@@ -11,6 +11,7 @@ import {
   MAX_GUESTS,
   MIN_BUDGET,
   PlanChangeSchema,
+  GuestSchema,
   PaymentSchema,
   PlanSchema,
   type CategoryId,
@@ -18,6 +19,8 @@ import {
   type Plan,
   type PlanChange,
   type Payment,
+  type Guest,
+  type Rsvp,
   type Task,
   type Vendor,
 } from "./schema";
@@ -79,7 +82,7 @@ export function createPlan(brief: EventBrief, today: string, now: Date = new Dat
     today,
     categories: new Set(budget.map((line) => line.category)),
   });
-  return stamp({ version: 1, brief, budget, tasks, vendors: [], createdAt: now.toISOString() }, now);
+  return stamp({ version: 1, brief, budget, tasks, vendors: [], guests: [], createdAt: now.toISOString() }, now);
 }
 
 /**
@@ -355,4 +358,19 @@ export function setPaymentPaid(plan: Plan, vendorId: string, paymentId: string, 
 
 export function removePayment(plan: Plan, vendorId: string, paymentId: string, now: Date = new Date()): Plan {
   return withPayments(plan, vendorId, (payments) => payments.filter((p) => p.id !== paymentId), now);
+}
+
+export function addGuest(plan: Plan, guest: Guest, now: Date = new Date()): Plan {
+  if (!GuestSchema.safeParse(guest).success) {
+    throw new PlanError("An invitation needs a name and a party size from 1 to 50.");
+  }
+  return stamp({ ...plan, guests: [...plan.guests, guest] }, now);
+}
+
+export function setRsvp(plan: Plan, guestId: string, rsvp: Rsvp, now: Date = new Date()): Plan {
+  return stamp({ ...plan, guests: plan.guests.map((g) => (g.id === guestId ? { ...g, rsvp } : g)) }, now);
+}
+
+export function removeGuest(plan: Plan, guestId: string, now: Date = new Date()): Plan {
+  return stamp({ ...plan, guests: plan.guests.filter((g) => g.id !== guestId) }, now);
 }

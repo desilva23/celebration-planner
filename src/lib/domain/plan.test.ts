@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { TODAY, weddingBrief } from "./fixtures.test-helpers";
 import {
+  addGuest,
   addPayment,
   applyChange,
   applyTradeoff,
@@ -10,14 +11,16 @@ import {
   createPlan,
   delayTaskInPlan,
   PlanError,
+  removeGuest,
   removePayment,
   removeVendor,
   setBudgetAmount,
   setPaymentPaid,
+  setRsvp,
   setTaskStatus,
   upsertVendor,
 } from "./plan";
-import { PlanSchema, type Payment, type Plan, type PlanChange, type Vendor } from "./schema";
+import { PlanSchema, type Guest, type Payment, type Plan, type PlanChange, type Vendor } from "./schema";
 import { tradeoffOptions } from "./tradeoffs";
 
 const NOW = new Date("2026-10-25T06:30:00Z");
@@ -88,6 +91,7 @@ describe("plan validity", () => {
     const base = upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor);
     const plan = deepFreeze(base);
     const over = deepFreeze(applyChange(base, { guestCount: 250 }, TODAY).plan);
+    const withGuest = deepFreeze(addGuest(base, { id: "g", name: "The Sharmas", partySize: 4, rsvp: "pending" }));
     const withPayment = deepFreeze(
       addPayment(base, "v1", { id: "p", label: "Advance", amount: 1, dueDate: "2026-11-15", paid: false }).plan,
     );
@@ -108,6 +112,9 @@ describe("plan validity", () => {
       addPayment(plan, "v1", { id: "p", label: "Advance", amount: 1, dueDate: "2026-11-15", paid: false }).plan,
       setPaymentPaid(withPayment, "v1", "p", true),
       removePayment(withPayment, "v1", "p"),
+      addGuest(plan, { id: "g", name: "The Sharmas", partySize: 4, rsvp: "pending" }),
+      setRsvp(withGuest, "g", "yes"),
+      removeGuest(withGuest, "g"),
       ...tradeoffOptions(over)
         .filter((o) => o.feasible)
         .map((o) => applyTradeoff(over, o)),
@@ -489,4 +496,29 @@ describe("payments", () => {
   it("refuses a vendor that isn't in the plan", () => {
     expect(() => setPaymentPaid(booked(), "nope", "pay1", true)).toThrow("Vendor not found.");
   });
+});
+
+describe("guest list", () => {
+  const sharmas: Guest = { id: "g1", name: "The Sharmas", partySize: 4, rsvp: "pending" };
+  const iyers: Guest = { id: "g2", name: "The Iyers", partySize: 3, rsvp: "pending" };
+
+  it("starts empty", () => {
+    expect(createPlan(weddingBrief(), TODAY).guests).toEqual([]);
+  });
+
+  it("adds invitations, records one reply, and removes one", () => {
+    let plan = addGuest(addGuest(createPlan(weddingBrief(), TODAY), sharmas), iyers);
+    plan = setRsvp(plan, "g1", "yes");
+    expect(plan.guests).toEqual([{ ...sharmas, rsvp: "yes" }, iyers]);
+    expect(removeGuest(plan, "g1").guests).toEqual([iyers]);
+  });
+
+  it.each([[{ name: "  " }], [{ partySize: 0 }], [{ partySize: 51 }], [{ partySize: 1.5 }]])(
+    "refuses an invitation the plan couldn't hold: %o",
+    (overrides) => {
+      expect(() => addGuest(createPlan(weddingBrief(), TODAY), { ...sharmas, ...overrides })).toThrow(
+        "An invitation needs a name and a party size from 1 to 50.",
+      );
+    },
+  );
 });
