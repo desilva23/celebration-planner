@@ -19,7 +19,7 @@ const completion = (overrides: Partial<Completion> = {}): Completion => ({
 const reply = (content: unknown, finishReason = "stop") =>
   Response.json({ choices: [{ message: { content }, finish_reason: finishReason }] });
 
-const sent = (call = 0) => JSON.parse(fetchMock.mock.calls[call][1]?.body as string);
+const sent = (call = 0) => JSON.parse(fetchMock.mock.calls[call]![1]?.body as string);
 
 describe("groqComplete", () => {
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe("groqComplete", () => {
   it("sends the prompt as chat messages with a strict schema and the abort signal", async () => {
     const request = completion();
     await expect(groqComplete(request)).resolves.toBe("{}");
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     expect(init?.signal).toBe(request.signal);
     expect(sent()).toEqual({
       model: "openai/gpt-oss-20b",

@@ -69,7 +69,7 @@ describe("suggestIdeas", () => {
       followUpQuestion: "Any dietary needs?",
     });
     const result = await suggestIdeas({ brief: weddingBrief(), budget: allocateBudget(weddingBrief()) });
-    expect(result.ideas[0].estimatedCost).toEqual({ min: 220_000, max: 250_000 });
+    expect(result.ideas[0]!.estimatedCost).toEqual({ min: 220_000, max: 250_000 });
     expect(result.followUpQuestion).toBe("Any dietary needs?");
     expect(generate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -185,6 +185,6 @@ describe("compareQuotes", () => {
     const { quotes } = await compareQuotes(request);
     expect(quotes[0]).toMatchObject({ total: null, perGuest: 1250 });
     expect(quotes[1]).toMatchObject({ perGuest: null });
-    expect(quotes[1].needsClarification[0]).toMatch(/per-guest price of ₹1,250 isn't stated/);
+    expect(quotes[1]!.needsClarification[0]).toMatch(/per-guest price of ₹1,250 isn't stated/);
   });
 });

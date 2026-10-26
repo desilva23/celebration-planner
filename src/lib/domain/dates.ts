@@ -4,8 +4,7 @@
 const DAY_MS = 86_400_000;
 
 function toUtcMs(iso: string): number {
-  const [y, m, d] = iso.split("-").map(Number);
-  return Date.UTC(y, m - 1, d);
+  return Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
 }
 
 function fromUtcMs(ms: number): string {

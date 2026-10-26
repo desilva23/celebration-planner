@@ -18,6 +18,13 @@ describe("createRateLimiter", () => {
     expect(limiter.check("a", 5_500)).toEqual({ ok: false, retryAfterSeconds: 5 });
   });
 
+  it("blocks everything for a full window when the limit is zero", () => {
+    expect(createRateLimiter({ limit: 0, windowMs: 60_000 }).check("a", 0)).toEqual({
+      ok: false,
+      retryAfterSeconds: 60,
+    });
+  });
+
   it("keeps limiting correctly after forgetting idle clients", () => {
     const limiter = createRateLimiter({ limit: 1, windowMs: 1_000 });
     for (let i = 0; i <= 10_000; i++) limiter.check(`client-${i}`, 0);

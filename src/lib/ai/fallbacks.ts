@@ -31,7 +31,7 @@ import { AMOUNT, parseAmount, parseCount } from "./numbers";
 const COUNT = String.raw`(\d[\d,]*|[a-z]+)`;
 const PEOPLE = String.raw`(?:guests?|people|persons|attendees|pax)`;
 const SPAN = String.raw`(days?|weeks?|months?)`;
-const DAYS_PER: Record<string, number> = { day: 1, week: 7, month: 30 };
+const DAYS_PER = { day: 1, week: 7, month: 30 };
 
 const EVENT_KEYWORDS: [RegExp, EventType][] = [
   [/\b(wedding|marriage|shaadi|reception)\b/, "wedding"],
@@ -51,7 +51,8 @@ const PRIORITY_KEYWORDS: [RegExp, CategoryId][] = [
 
 function spanDays(count: string, unit: string): number | null {
   const n = parseCount(count);
-  return n === null ? null : n * DAYS_PER[unit.replace(/s$/, "")];
+  // SPAN only captures day(s), week(s) or month(s).
+  return n === null ? null : n * DAYS_PER[unit.replace(/s$/, "") as keyof typeof DAYS_PER];
 }
 
 export function interpretFallback({ message, brief, today }: InterpretRequest): InterpretResult {
@@ -78,14 +79,17 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
     }
   }
 
+  // Capture groups that a pattern always fills when it matches are asserted
+  // with "!"; optional ones (amount units) are passed on as possibly undefined.
+
   // Guests: relative ("50 more guests") needs a current brief; absolute ("200 guests") doesn't.
   const more = text.match(new RegExp(`${COUNT}\\s+(more|extra|additional|fewer|less)\\s+${PEOPLE}`));
   const absolute = text.match(new RegExp(`(\\d[\\d,]*)\\s*${PEOPLE}`));
   if (more && brief) {
-    const n = parseCount(more[1]);
-    if (n !== null) updates.guestCount = Math.max(1, brief.guestCount + (/fewer|less/.test(more[2]) ? -n : n));
+    const n = parseCount(more[1]!);
+    if (n !== null) updates.guestCount = Math.max(1, brief.guestCount + (/fewer|less/.test(more[2]!) ? -n : n));
   } else if (absolute) {
-    updates.guestCount = parseCount(absolute[1]);
+    updates.guestCount = parseCount(absolute[1]!);
   }
   if (updates.guestCount !== null && !GuestCountSchema.safeParse(updates.guestCount).success) {
     updates.guestCount = null;
@@ -104,15 +108,15 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   );
   const unitAmount = text.match(/(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|cr)\b/);
   if (shift && brief) {
-    const delta = parseAmount(shift[2], shift[3]);
+    const delta = parseAmount(shift[2]!, shift[3]);
     if (delta !== null) {
-      const down = /dropped|reduced|cut|decreased|fell|down/.test(shift[1]);
+      const down = /dropped|reduced|cut|decreased|fell|down/.test(shift[1]!);
       updates.totalBudget = Math.max(MIN_BUDGET, brief.totalBudget + (down ? -delta : delta));
     }
   } else if (set) {
-    updates.totalBudget = parseAmount(set[1], set[2]);
+    updates.totalBudget = parseAmount(set[1]!, set[2]);
   } else if (unitAmount) {
-    updates.totalBudget = parseAmount(unitAmount[1], unitAmount[2]);
+    updates.totalBudget = parseAmount(unitAmount[1]!, unitAmount[2]);
   } else if (/budget\s+(?:has\s+)?(dropped|reduced|cut|decreased|fell|went down|shrank)/.test(text)) {
     clarifyingQuestion = "By how much did the budget change? A rough figure is fine.";
   }
@@ -133,12 +137,12 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
     new RegExp(`(postponed|pushed back|delayed|brought forward|moved up|preponed)\\s+(?:by\\s+)?${COUNT}\\s+${SPAN}`),
   );
   const relative = spanFirst
-    ? { count: spanFirst[1], unit: spanFirst[2], direction: spanFirst[3] }
+    ? { count: spanFirst[1]!, unit: spanFirst[2]!, direction: spanFirst[3]! }
     : verbFirst
-      ? { count: verbFirst[2], unit: verbFirst[3], direction: verbFirst[1] }
+      ? { count: verbFirst[2]!, unit: verbFirst[3]!, direction: verbFirst[1]! }
       : null;
   if (iso) {
-    updates.eventDate = iso[1];
+    updates.eventDate = iso[1]!;
   } else if (relative && brief) {
     const days = spanDays(relative.count, relative.unit);
     if (days !== null) {
@@ -164,7 +168,8 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   );
   if (emphasis) {
     // Only the clause right before "matters most" counts, not the whole message.
-    const clause = emphasis[1] ?? emphasis[4];
+    // One of the two alternatives always matched, so one of these is filled.
+    const clause = (emphasis[1] ?? emphasis[4])!;
     const phrase = clause.slice(clause.lastIndexOf(",") + 1);
     const priorities = PRIORITY_KEYWORDS.filter(([pattern]) => pattern.test(phrase)).map(([, c]) => c);
     if (priorities.length) {

@@ -137,7 +137,7 @@ describe("applyChange", () => {
     // Every open task moves earlier and still lands before the event.
     after.tasks.forEach((t, i) => {
       if (t.status === "done") return;
-      expect(t.dueDate < before.tasks[i].dueDate).toBe(true);
+      expect(t.dueDate < before.tasks[i]!.dueDate).toBe(true);
       expect(t.dueDate <= after.brief.eventDate).toBe(true);
     });
     // The user is told what happened and offered ways back into budget.
@@ -270,7 +270,7 @@ describe("bookVendor", () => {
     const { plan: booked } = bookVendor(plan, "v1");
     expect(line(booked, "venue")).toMatchObject({ amount: 150_000, source: "confirmed" });
     expect(booked.tasks.find((t) => t.id === "venue")!.status).toBe("done");
-    expect(booked.vendors[0].status).toBe("booked");
+    expect(booked.vendors[0]!.status).toBe("booked");
   });
 
   it("needs a quote before booking", () => {

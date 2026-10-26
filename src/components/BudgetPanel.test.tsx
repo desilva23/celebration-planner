@@ -68,7 +68,7 @@ describe("BudgetPanel", () => {
       await user.clear(amountField("Decor"));
       await user.type(amountField("Decor"), `90000${key}`);
       expect(onChange).toHaveBeenCalledOnce();
-      expect(onChange.mock.calls[0][0].budget.find((l) => l.category === "decor")!.amount).toBe(90_000);
+      expect(onChange.mock.calls[0]![0].budget.find((l) => l.category === "decor")!.amount).toBe(90_000);
     });
 
     // Regression: a figure too large to store used to be accepted, and the
@@ -98,7 +98,7 @@ describe("BudgetPanel", () => {
         "Invite fewer guests",
         "Keep the plan and raise the budget",
       ]);
-      const contingency = options[0].closest("li")!;
+      const contingency = options[0]!.closest("li")!;
       expect(within(contingency).getByRole("button", { name: "Choose this" })).toBeDisabled();
       expect(within(contingency).getByRole("button", { name: "Choose this" })).toHaveAccessibleDescription(
         "Doesn’t close the gap on its own.",
@@ -110,11 +110,11 @@ describe("BudgetPanel", () => {
       const { user, onUpdate } = setup(overBudget());
       const trim = screen.getByRole("heading", { name: "Invite fewer guests" }).closest("li")!;
       await user.click(within(trim).getByRole("button", { name: "Choose this" }));
-      const [update, heading] = onUpdate.mock.calls[0];
+      const [update, heading] = onUpdate.mock.calls[0]!;
       expect(heading).toBe("Applied: Invite fewer guests");
       expect(update.plan.brief.guestCount).toBeLessThan(250);
       expect(update.effects.every((e) => e.tone === "info")).toBe(true);
-      expect(update.effects[0].message).toMatch(/^Invite \d+ instead of 250/);
+      expect(update.effects[0]!.message).toMatch(/^Invite \d+ instead of 250/);
     });
 
     it("lets the user change what's protected, up to four categories", async () => {

@@ -100,7 +100,7 @@ export function applyChange(plan: Plan, change: PlanChange, today: string, now: 
     budget = scaleForGuests(budget, before.guestCount, brief.guestCount);
     effects.push({ tone: "info", message: `Guests: ${before.guestCount} → ${brief.guestCount}` });
     plan.budget.forEach((old, i) => {
-      const next = budget[i];
+      const next = budget[i]!; // scaleForGuests maps line for line
       if (next.amount !== old.amount) {
         effects.push({
           tone: "info",
@@ -141,7 +141,8 @@ export function applyChange(plan: Plan, change: PlanChange, today: string, now: 
   if (brief.eventDate !== before.eventDate) {
     tasks = rescheduleOpenTasks(tasks, brief.eventType, brief.eventDate, today);
     const shift = daysBetween(before.eventDate, brief.eventDate);
-    const moved = tasks.filter((t, i) => t.dueDate !== plan.tasks[i].dueDate).length;
+    const previousDue = new Map(plan.tasks.map((t) => [t.id, t.dueDate]));
+    const moved = tasks.filter((t) => t.dueDate !== previousDue.get(t.id)).length;
     effects.push({
       tone: "info",
       message: `Event moved ${Math.abs(shift)} days ${shift < 0 ? "earlier" : "later"}, to ${formatDate(brief.eventDate)}. ${moved} open tasks rescheduled.`,

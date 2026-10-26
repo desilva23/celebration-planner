@@ -51,7 +51,7 @@ describe("IntakeForm", () => {
     await submit();
 
     expect(onCreate).toHaveBeenCalledOnce();
-    expect(onCreate.mock.calls[0][0].brief).toEqual({
+    expect(onCreate.mock.calls[0]![0].brief).toEqual({
       eventType: "birthday",
       title: "Birthday plan",
       eventDate: "2027-01-15",
@@ -69,7 +69,7 @@ describe("IntakeForm", () => {
     await user.type(field("Name for this plan"), "Anu & Ravi");
     await fillRequired();
     await submit();
-    expect(onCreate.mock.calls[0][0].brief.title).toBe("Anu & Ravi");
+    expect(onCreate.mock.calls[0]![0].brief.title).toBe("Anu & Ravi");
   });
 
   it("lists every problem in a focused summary that links to each field", async () => {

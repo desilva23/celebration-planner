@@ -77,7 +77,7 @@ describe("IdeasPanel", () => {
     expect(detailLists("Marigold courtyard")).toHaveLength(1);
     expect(detailLists("Grand thali")).toHaveLength(0);
     expect(screen.getByText("AI suggestion")).toBeInTheDocument();
-    expect(api.sent()[0]).toEqual({ url: "/api/ideas", body: { brief: plan.brief, budget: plan.budget } });
+    expect(api.sent()[0]!).toEqual({ url: "/api/ideas", body: { brief: plan.brief, budget: plan.budget } });
     expect(screen.getByRole("button", { name: "Start over with fresh ideas" })).toBeInTheDocument();
     expect(await axeViolations(container)).toEqual([]);
   });
@@ -117,10 +117,10 @@ describe("IdeasPanel", () => {
     await user.click(screen.getByRole("button", { name: "Rework the ideas" }));
     expect(screen.getByRole("button", { name: "Reworking…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Thinking…" })).toBeDisabled();
-    release(reply([IDEAS[0]]));
+    release(reply([IDEAS[0]!]));
     expect(await screen.findByRole("button", { name: "Rework the ideas" })).toBeInTheDocument();
     expect(box).toHaveValue("");
-    expect(api.sent()[1].body).toEqual({
+    expect(api.sent()[1]!.body).toEqual({
       brief: plan.brief,
       budget: plan.budget,
       refinement: "Too expensive",

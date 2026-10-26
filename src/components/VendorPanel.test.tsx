@@ -106,7 +106,7 @@ describe("VendorPanel", () => {
       expect(screen.getByText("Quoted")).toBeInTheDocument();
       expect(screen.getByLabelText("Their quote (₹)")).toHaveValue(150_000);
       await user.click(screen.getByRole("button", { name: "Mark as booked" }));
-      const [update, heading] = onUpdate.mock.calls[0];
+      const [update, heading] = onUpdate.mock.calls[0]!;
       expect(heading).toBe("Lotus Hall booked");
       expect(update.plan.budget.find((l) => l.category === "venue")).toMatchObject({
         amount: 150_000,
@@ -164,7 +164,7 @@ describe("VendorPanel", () => {
     expect(screen.queryByText(/^Planned:/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "What should I ask venue vendors?" }));
     await screen.findByText("Built-in suggestion");
-    expect(api.sent()[0].body).toMatchObject({ category: "venue", budgetForCategory: 0 });
+    expect(api.sent()[0]!.body).toMatchObject({ category: "venue", budgetForCategory: 0 });
   });
 
   describe("what to ask vendors", () => {
@@ -182,7 +182,7 @@ describe("VendorPanel", () => {
       expect(await screen.findByRole("heading", { name: "What you need" })).toBeInTheDocument();
       expect(screen.getByText("What is the capacity?")).toBeInTheDocument();
       expect(screen.getByText("Parking charges")).toBeInTheDocument();
-      expect(api.sent()[0]).toEqual({
+      expect(api.sent()[0]!).toEqual({
         url: "/api/vendor-brief",
         body: { category: "venue", brief: plan.brief, budgetForCategory: 176_000 },
       });
@@ -207,9 +207,9 @@ describe("VendorPanel", () => {
       await openComparison(user);
       const compare = screen.getByRole("button", { name: "Compare" });
       expect(compare).toBeDisabled();
-      await user.type(screen.getAllByLabelText("Quote text")[0], "too short");
+      await user.type(screen.getAllByLabelText("Quote text")[0]!, "too short");
       expect(compare).toBeDisabled();
-      await user.type(screen.getAllByLabelText("Quote text")[0], " but now it is long enough");
+      await user.type(screen.getAllByLabelText("Quote text")[0]!, " but now it is long enough");
       expect(compare).toBeEnabled();
     });
 
@@ -240,7 +240,7 @@ describe("VendorPanel", () => {
       await openComparison(user);
       await user.clear(screen.getByLabelText("Name for quote 1"));
       await user.type(screen.getByLabelText("Name for quote 1"), "Annapoorna");
-      await user.type(screen.getAllByLabelText("Quote text")[0], "Rs 2,50,000 for 200 guests, GST extra");
+      await user.type(screen.getAllByLabelText("Quote text")[0]!, "Rs 2,50,000 for 200 guests, GST extra");
       await user.click(screen.getByRole("button", { name: "Compare" }));
 
       const table = await screen.findByRole("table", {
@@ -263,7 +263,7 @@ describe("VendorPanel", () => {
           .slice(0, 2)
           .map((c) => c.textContent),
       ).toEqual(["No price stated", "—"]);
-      expect(api.sent()[0].body).toEqual({
+      expect(api.sent()[0]!.body).toEqual({
         category: "catering",
         guestCount: 200,
         budgetForCategory: 256_000,
@@ -288,7 +288,7 @@ describe("VendorPanel", () => {
       });
       const { user, onChange } = setup();
       await openComparison(user);
-      await user.type(screen.getAllByLabelText("Quote text")[0], "Rs 1,500 per plate, minimum 180 plates");
+      await user.type(screen.getAllByLabelText("Quote text")[0]!, "Rs 1,500 per plate, minimum 180 plates");
       await user.click(screen.getByRole("button", { name: "Compare" }));
       await user.click(await screen.findByRole("button", { name: "Save to my vendors: Saravana" }));
       expect(savedVendors(onChange)[0]).toMatchObject({
@@ -327,7 +327,7 @@ describe("VendorPanel", () => {
       });
       const { user } = setup();
       await openComparison(user);
-      await user.type(screen.getAllByLabelText("Quote text")[0], "Rs 1,250 per plate for the basic menu");
+      await user.type(screen.getAllByLabelText("Quote text")[0]!, "Rs 1,250 per plate for the basic menu");
       await user.click(screen.getByRole("button", { name: "Compare" }));
       expect(await screen.findAllByRole("rowheader", { name: "Annapoorna" })).toHaveLength(2);
       expect(error.mock.calls.filter(([message]) => String(message).includes("same key"))).toEqual([]);
@@ -337,7 +337,7 @@ describe("VendorPanel", () => {
       stubFetch().reply({ error: "AI isn't configured on this server." }, 503);
       const { user } = setup();
       await openComparison(user);
-      await user.type(screen.getAllByLabelText("Quote text")[0], "Rs 1,250 per plate for 200 guests");
+      await user.type(screen.getAllByLabelText("Quote text")[0]!, "Rs 1,250 per plate for 200 guests");
       await user.click(screen.getByRole("button", { name: "Compare" }));
       expect(await screen.findByRole("alert")).toHaveTextContent(
         "AI isn't configured on this server. You can still add vendors and quotes by hand above.",

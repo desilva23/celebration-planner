@@ -50,7 +50,7 @@ describe("ChangePanel", () => {
       .map((li) => li.textContent);
     expect(rows).toEqual(["Guests: 200 → 250", "Budget: ₹8,00,000 → ₹7,20,000", "Date: 1 Mar 2027 → 15 Feb 2027"]);
     expect(screen.getByText("Built-in suggestion")).toBeInTheDocument();
-    expect(api.sent()[0].body).toEqual({
+    expect(api.sent()[0]!.body).toEqual({
       message: "50 more guests, budget dropped by 80k, two weeks earlier",
       brief: plan.brief,
       today: "2026-10-25",
@@ -59,7 +59,7 @@ describe("ChangePanel", () => {
 
     await user.click(screen.getByRole("button", { name: "Apply to my plan" }));
     expect(onUpdate).toHaveBeenCalledOnce();
-    const [update, heading] = onUpdate.mock.calls[0];
+    const [update, heading] = onUpdate.mock.calls[0]!;
     expect(heading).toBe("Plan revised");
     expect(update.plan.brief).toMatchObject({ guestCount: 250, totalBudget: 720_000, eventDate: "2027-02-15" });
     expect(screen.getByLabelText("What changed")).toHaveValue("");
@@ -169,7 +169,7 @@ describe("ChangePanel", () => {
       await user.type(screen.getByLabelText("Event date"), "2027-04-10");
       await user.selectOptions(screen.getByLabelText("Experience"), "Premium");
       await user.click(screen.getByRole("button", { name: "Update the plan" }));
-      expect(onUpdate.mock.calls[0][0].plan.brief).toMatchObject({
+      expect(onUpdate.mock.calls[0]![0].plan.brief).toMatchObject({
         guestCount: 180,
         totalBudget: 750_000,
         eventDate: "2027-04-10",
@@ -184,7 +184,7 @@ describe("ChangePanel", () => {
       await user.clear(screen.getByLabelText("Total budget (₹)"));
       await user.clear(screen.getByLabelText("Event date"));
       await user.click(screen.getByRole("button", { name: "Update the plan" }));
-      expect(onUpdate.mock.calls[0][0].plan.brief).toEqual(plan.brief);
+      expect(onUpdate.mock.calls[0]![0].plan.brief).toEqual(plan.brief);
     });
 
     it("shows the domain's reason when the edit is refused", async () => {

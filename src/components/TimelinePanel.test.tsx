@@ -78,10 +78,10 @@ describe("TimelinePanel", () => {
     await user.clear(date);
     await user.type(date, "2027-01-20");
     await user.click(row.getByRole("button", { name: "Move it and update what depends on it" }));
-    const [update, heading] = onUpdate.mock.calls[0];
+    const [update, heading] = onUpdate.mock.calls[0]!;
     expect(heading).toBe("Schedule updated");
     expect(update.plan.tasks.find((t) => t.id === "venue")!.dueDate).toBe("2027-01-20");
-    expect(update.effects[0].message).toMatch(/dependent tasks had to move/);
+    expect(update.effects[0]!.message).toMatch(/dependent tasks had to move/);
   });
 
   it("does nothing when the date is unchanged or cleared", async () => {

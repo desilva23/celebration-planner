@@ -197,6 +197,6 @@ describe("nextActions", () => {
 describe("blockedBy", () => {
   it("lists only the prerequisites that are still open", () => {
     const list = [task("a"), task("b", { status: "done" }), task("c", { dependsOn: ["a", "b", "gone"] })];
-    expect(blockedBy(list[2], list).map((t) => t.id)).toEqual(["a"]);
+    expect(blockedBy(list[2]!, list).map((t) => t.id)).toEqual(["a"]);
   });
 });

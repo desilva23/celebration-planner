@@ -47,7 +47,7 @@ describe("generateStructured with Gemini", () => {
   it("sends the portable schema with default settings and validates the reply", async () => {
     complete.mockResolvedValueOnce(JSON.stringify(validReply));
     await expect(generateStructured(request)).resolves.toEqual(validReply);
-    const [completion] = complete.mock.calls[0];
+    const [completion] = complete.mock.calls[0]!;
     expect(completion).toMatchObject({
       name: "interpret_result",
       system: "sys",
@@ -62,7 +62,7 @@ describe("generateStructured with Gemini", () => {
   it("passes the requested tier and temperature through", async () => {
     complete.mockResolvedValueOnce(JSON.stringify(validReply));
     await generateStructured({ ...request, model: "smart", temperature: 0.8, timeoutMs: 30_000 });
-    expect(complete.mock.calls[0][0]).toMatchObject({ tier: "smart", temperature: 0.8 });
+    expect(complete.mock.calls[0]![0]).toMatchObject({ tier: "smart", temperature: 0.8 });
   });
 
   it("trims an over-long reply instead of rejecting it", async () => {
@@ -98,7 +98,7 @@ describe("generateStructured with Groq", () => {
     fetchMock.mockResolvedValueOnce(groqReply(JSON.stringify(validReply)));
     await expect(generateStructured(request)).resolves.toEqual(validReply);
 
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0]!;
     const body = JSON.parse(init.body);
     expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
     expect(init.headers.Authorization).toBe("Bearer test-key");

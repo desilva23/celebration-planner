@@ -35,10 +35,11 @@ export function parseCount(raw: string): number | null {
 export function numbersMentioned(text: string): Set<number> {
   const found = new Set<number>();
   for (const match of text.matchAll(new RegExp(AMOUNT, "gi"))) {
+    const digits = match[1]!; // AMOUNT always captures the digits; the unit is optional.
     // Null only when the digits overflow, in which case there is nothing to record.
-    const expanded = parseAmount(match[1], match[2]);
+    const expanded = parseAmount(digits, match[2]);
     if (expanded === null) continue;
-    const raw = Number(match[1].replace(/,/g, ""));
+    const raw = Number(digits.replace(/,/g, ""));
     found.add(Math.round(raw));
     found.add(Math.floor(raw));
     found.add(expanded);
