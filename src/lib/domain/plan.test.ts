@@ -5,6 +5,7 @@ import {
   applyChange,
   applyTradeoff,
   bookVendor,
+  cancelBooking,
   createPlan,
   delayTaskInPlan,
   PlanError,
@@ -96,6 +97,7 @@ describe("plan validity", () => {
       upsertVendor(plan, { ...venueVendor, quote: 1 }),
       removeVendor(plan, "v1"),
       bookVendor(plan, "v1").plan,
+      cancelBooking(deepFreeze(bookVendor(plan, "v1").plan), "v1").plan,
       ...tradeoffOptions(over)
         .filter((o) => o.feasible)
         .map((o) => applyTradeoff(over, o)),
@@ -316,5 +318,107 @@ describe("bookVendor", () => {
       tone: "warning",
       message: "The plan is now ₹1,24,000 over budget.",
     });
+  });
+
+  // Regression: a second booking in a category used to replace the first one's price.
+  it("adds a second booking in the same category to the confirmed total", () => {
+    let plan = createPlan(weddingBrief(), TODAY);
+    plan = upsertVendor(plan, {
+      ...venueVendor,
+      id: "p1",
+      category: "photography",
+      name: "Lens & Light",
+      quote: 60_000,
+    });
+    plan = upsertVendor(plan, {
+      ...venueVendor,
+      id: "p2",
+      category: "photography",
+      name: "Frame Films",
+      quote: 45_000,
+    });
+    plan = bookVendor(plan, "p1").plan;
+    const { plan: both, effects } = bookVendor(plan, "p2");
+    expect(line(both, "photography")).toMatchObject({ amount: 105_000, source: "confirmed" });
+    // Two bookings at ₹1,05,000 against an ₹80,000 estimate also push the plan over budget.
+    expect(messages(effects)).toEqual([
+      "Photography now ₹1,05,000 confirmed across 2 vendors",
+      "The plan is now ₹25,000 over budget.",
+    ]);
+  });
+
+  it("won't book the same vendor twice", () => {
+    const plan = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+    expect(() => bookVendor(plan, "v1")).toThrow("Lotus Hall is already booked.");
+  });
+});
+
+describe("cancelBooking", () => {
+  const twoPhotographers = () => {
+    let plan = createPlan(weddingBrief(), TODAY);
+    plan = upsertVendor(plan, {
+      ...venueVendor,
+      id: "p1",
+      category: "photography",
+      name: "Lens & Light",
+      quote: 60_000,
+    });
+    plan = upsertVendor(plan, {
+      ...venueVendor,
+      id: "p2",
+      category: "photography",
+      name: "Frame Films",
+      quote: 45_000,
+    });
+    return bookVendor(bookVendor(plan, "p1").plan, "p2").plan;
+  };
+
+  it("recalculates the confirmed total from the bookings that remain", () => {
+    const { plan, effects } = cancelBooking(twoPhotographers(), "p2");
+    expect(line(plan, "photography")).toMatchObject({ amount: 60_000, source: "confirmed" });
+    expect(plan.vendors.find((v) => v.id === "p2")!.status).toBe("quoted");
+    expect(messages(effects)).toEqual(["Photography now ₹60,000 confirmed across 1 vendor"]);
+  });
+
+  it("keeps counting when several bookings remain", () => {
+    const drone = { ...venueVendor, id: "p3", category: "photography" as const, name: "Sky Shots", quote: 15_000 };
+    const three = bookVendor(upsertVendor(twoPhotographers(), drone), "p3").plan;
+    expect(messages(cancelBooking(three, "p1").effects)).toEqual([
+      "Photography now ₹60,000 confirmed across 2 vendors",
+    ]);
+  });
+
+  it("counts a booking with no recorded quote as nothing", () => {
+    const plan = twoPhotographers();
+    const odd = { ...plan, vendors: plan.vendors.map((v) => (v.id === "p1" ? { ...v, quote: null } : v)) };
+    expect(line(cancelBooking(odd, "p2").plan, "photography").amount).toBe(0);
+  });
+
+  it("makes the line an estimate again and reopens the booking task when none remain", () => {
+    const booked = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+    const { plan, effects } = cancelBooking(booked, "v1");
+    expect(line(plan, "venue")).toMatchObject({ amount: 150_000, source: "estimate" });
+    expect(plan.tasks.find((t) => t.id === "venue")!.status).toBe("todo");
+    expect(effects).toEqual([
+      { tone: "warning", message: "Venue is an estimate again. Get fresh quotes before rebooking." },
+      { tone: "warning", message: "Reopened “Shortlist and book the venue”" },
+    ]);
+  });
+
+  it("leaves a booking task alone when it's already open", () => {
+    const booked = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+    const reopened = setTaskStatus(booked, "venue", "todo");
+    expect(cancelBooking(reopened, "v1").effects).toHaveLength(1);
+  });
+
+  it("refuses a vendor that isn't booked, or isn't in the plan", () => {
+    const plan = upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor);
+    expect(() => cancelBooking(plan, "v1")).toThrow("Lotus Hall isn't booked.");
+    expect(() => cancelBooking(plan, "nope")).toThrow("Vendor not found.");
+  });
+
+  it("must come before removing a booked vendor", () => {
+    const booked = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+    expect(() => removeVendor(booked, "v1")).toThrow("Cancel the booking before removing this vendor.");
   });
 });

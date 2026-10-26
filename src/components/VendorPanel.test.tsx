@@ -119,7 +119,7 @@ describe("VendorPanel", () => {
         new PlanError("Record the vendor's quote before marking it booked."),
         "Record the vendor's quote before marking it booked.",
       ],
-      [new Error("storage exploded"), "Couldn't record the booking."],
+      [new Error("storage exploded"), "Couldn't update the booking."],
     ])("explains when a booking can't be recorded: %s", async (failure, message) => {
       const plan = withVendors(vendor({ quote: 150_000, status: "quoted" }));
       const props = panelProps(plan);
@@ -141,13 +141,24 @@ describe("VendorPanel", () => {
       expect(update.plan.vendors.map((v: Vendor) => v.name)).toEqual(["Rose Garden"]);
     });
 
-    it("shows a booked vendor's confirmed price instead of actions", () => {
+    it("shows a booked vendor's confirmed price, with only the option to cancel", () => {
       const plan = bookVendor(withVendors(vendor({ quote: 150_000, status: "quoted" })), "v1").plan;
       setup(plan);
       expect(screen.getByText("Booked")).toBeInTheDocument();
       expect(screen.getByText("₹1,50,000 confirmed")).toBeInTheDocument();
       expect(screen.getByText("Planned: ₹1,50,000 (confirmed)")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Mark as booked" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Remove/ })).not.toBeInTheDocument();
+    });
+
+    it("cancels a booking as a change that can be undone", async () => {
+      const plan = bookVendor(withVendors(vendor({ quote: 150_000, status: "quoted" })), "v1").plan;
+      const { user, onUpdate } = setup(plan);
+      await user.click(screen.getByRole("button", { name: "Cancel booking with Lotus Hall" }));
+      const [update, heading] = onUpdate.mock.calls[0]!;
+      expect(heading).toBe("Lotus Hall booking cancelled");
+      expect(update.plan.vendors[0]!.status).toBe("quoted");
+      expect(update.plan.budget.find((l) => l.category === "venue")!.source).toBe("estimate");
     });
 
     // Regression: a booking with no recorded quote was shown as "₹0 confirmed".

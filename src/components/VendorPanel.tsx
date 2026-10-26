@@ -4,7 +4,7 @@ import { useState, type SubmitEvent } from "react";
 import type { CompareQuotesResult, QuoteSummary, VendorBriefResult } from "@/lib/ai/contracts";
 import { newId, useAiCall } from "@/lib/client/api";
 import { formatInr } from "@/lib/domain/format";
-import { bookVendor, PlanError, removeVendor, upsertVendor } from "@/lib/domain/plan";
+import { bookVendor, cancelBooking, PlanError, removeVendor, upsertVendor, type PlanUpdate } from "@/lib/domain/plan";
 import type { CategoryId, Plan, Vendor } from "@/lib/domain/schema";
 import type { PanelProps } from "./PlanDashboard";
 import { categoryLabel, ErrorMessage, Provenance, Section } from "./ui";
@@ -12,16 +12,17 @@ import { categoryLabel, ErrorMessage, Provenance, Section } from "./ui";
 export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
   const categories = plan.budget.map((l) => l.category).filter((c) => c !== "contingency");
   const [category, setCategory] = useState<CategoryId>(categories[0] ?? "venue");
-  const [bookError, setBookError] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const line = plan.budget.find((l) => l.category === category);
   const vendors = plan.vendors.filter((v) => v.category === category);
 
-  function book(vendor: Vendor) {
+  /** The plan can refuse a booking change (no quote yet, for example); say why. */
+  function changeBooking(change: () => PlanUpdate, heading: string) {
     try {
-      onUpdate(bookVendor(plan, vendor.id), `${vendor.name} booked`);
-      setBookError(null);
+      onUpdate(change(), heading);
+      setBookingError(null);
     } catch (error) {
-      setBookError(error instanceof PlanError ? error.message : "Couldn't record the booking.");
+      setBookingError(error instanceof PlanError ? error.message : "Couldn't update the booking.");
     }
   }
 
@@ -50,7 +51,7 @@ export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
       <VendorBrief key={`brief-${category}`} plan={plan} category={category} budgetForCategory={line?.amount ?? 0} />
 
       <h3>Your {categoryLabel(category).toLowerCase()} vendors</h3>
-      {bookError && <ErrorMessage>{bookError}</ErrorMessage>}
+      {bookingError && <ErrorMessage>{bookingError}</ErrorMessage>}
       {vendors.length === 0 ? (
         <p className="hint">None yet. Add one below once you’ve been in touch.</p>
       ) : (
@@ -60,7 +61,8 @@ export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
               key={`${vendor.id}-${vendor.quote}-${vendor.status}`}
               vendor={vendor}
               onSave={(v) => onChange(upsertVendor(plan, v))}
-              onBook={() => book(vendor)}
+              onBook={() => changeBooking(() => bookVendor(plan, vendor.id), `${vendor.name} booked`)}
+              onCancel={() => changeBooking(() => cancelBooking(plan, vendor.id), `${vendor.name} booking cancelled`)}
               onRemove={() => onUpdate({ plan: removeVendor(plan, vendor.id), effects: [] }, `${vendor.name} removed`)}
             />
           ))}
@@ -143,11 +145,13 @@ function VendorRow({
   vendor,
   onSave,
   onBook,
+  onCancel,
   onRemove,
 }: {
   vendor: Vendor;
   onSave: (v: Vendor) => void;
   onBook: () => void;
+  onCancel: () => void;
   onRemove: () => void;
 }) {
   const [quote, setQuote] = useState(vendor.quote === null ? "" : String(vendor.quote));
@@ -194,8 +198,13 @@ function VendorRow({
           </button>
         </div>
       ) : (
-        // Never show ₹0 as a confirmed price for a booking with no recorded quote.
-        vendor.quote !== null && <p>{formatInr(vendor.quote)} confirmed</p>
+        <div className="vendor-actions">
+          {/* Never show ₹0 as a confirmed price for a booking with no recorded quote. */}
+          {vendor.quote !== null && <p>{formatInr(vendor.quote)} confirmed</p>}
+          <button type="button" className="button ghost small" onClick={onCancel}>
+            Cancel booking <span className="visually-hidden">with {vendor.name}</span>
+          </button>
+        </div>
       )}
     </li>
   );

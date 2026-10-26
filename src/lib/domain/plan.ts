@@ -214,43 +214,97 @@ export function upsertVendor(plan: Plan, vendor: Vendor, now: Date = new Date())
 }
 
 export function removeVendor(plan: Plan, vendorId: string, now: Date = new Date()): Plan {
+  // A booked vendor's price is in the budget as confirmed, so the booking has to go first.
+  if (plan.vendors.some((v) => v.id === vendorId && v.status === "booked")) {
+    throw new PlanError("Cancel the booking before removing this vendor.");
+  }
   return stamp({ ...plan, vendors: plan.vendors.filter((v) => v.id !== vendorId) }, now);
 }
 
+/** The quotes booked in `category`; a booking without a recorded quote adds nothing. */
+function bookedIn(vendors: Vendor[], category: CategoryId): { total: number; count: number } {
+  const booked = vendors.filter((v) => v.category === category && v.status === "booked");
+  return { total: booked.reduce((sum, v) => sum + (v.quote ?? 0), 0), count: booked.length };
+}
+
 /**
- * Records a booking the user has made. The vendor's quote replaces the
- * estimate and is marked confirmed, so it stops being rescaled or cut.
+ * Records a booking the user has made. The category's budget line becomes the
+ * total of its booked quotes, marked confirmed, so it stops being rescaled or
+ * cut. A second booking in a category (a photographer and a videographer, say)
+ * adds to that total rather than replacing it.
  */
 export function bookVendor(plan: Plan, vendorId: string, now: Date = new Date()): PlanUpdate {
   const vendor = plan.vendors.find((v) => v.id === vendorId);
   if (!vendor) throw new PlanError("Vendor not found.");
+  if (vendor.status === "booked") throw new PlanError(`${vendor.name} is already booked.`);
   if (vendor.quote === null) throw new PlanError("Record the vendor's quote before marking it booked.");
 
-  const effects: ChangeEffect[] = [];
+  const vendors = plan.vendors.map((v) => (v.id === vendorId ? { ...v, status: "booked" as const } : v));
+  const { total, count } = bookedIn(vendors, vendor.category);
   const line = plan.budget.find((l) => l.category === vendor.category);
   const budget = line
-    ? plan.budget.map((l) => (l === line ? { ...l, amount: vendor.quote!, source: "confirmed" as const } : l))
+    ? plan.budget.map((l) => (l === line ? { ...l, amount: total, source: "confirmed" as const } : l))
     : [
         ...plan.budget,
-        { category: vendor.category, amount: vendor.quote, scalesWithGuests: false, source: "confirmed" as const },
+        { category: vendor.category, amount: total, scalesWithGuests: false, source: "confirmed" as const },
       ];
-  effects.push({
-    tone: "info",
-    message: line
-      ? `${label(vendor.category)} confirmed at ${formatInr(vendor.quote)} (estimate was ${formatInr(line.amount)})`
-      : `${label(vendor.category)} added at ${formatInr(vendor.quote)}`,
-  });
+  const effects: ChangeEffect[] = [
+    {
+      tone: "info",
+      message: !line
+        ? `${label(vendor.category)} added at ${formatInr(total)}`
+        : count === 1
+          ? `${label(vendor.category)} confirmed at ${formatInr(total)} (estimate was ${formatInr(line.amount)})`
+          : `${label(vendor.category)} now ${formatInr(total)} confirmed across ${count} vendors`,
+    },
+  ];
 
   const taskId = BOOKING_TASK[vendor.category];
   const tasks = plan.tasks.map((t) => (t.id === taskId && t.status === "todo" ? { ...t, status: "done" as const } : t));
   const completed = plan.tasks.find((t) => t.id === taskId && t.status === "todo");
   if (completed) effects.push({ tone: "info", message: `Marked “${completed.title}” as done` });
 
-  const vendors = plan.vendors.map((v) => (v.id === vendorId ? { ...v, status: "booked" as const } : v));
   const next = stamp({ ...plan, budget, tasks, vendors }, now);
   const summary = summariseBudget(budget, next.brief);
   if (summary.overBy > 0) {
     effects.push({ tone: "warning", message: `The plan is now ${formatInr(summary.overBy)} over budget.` });
   }
   return { plan: next, effects };
+}
+
+/**
+ * Cancels a booking. The vendor goes back to quoted and the category's
+ * confirmed amount is recalculated from the bookings that remain. With none
+ * left, the line is an estimate again at the same figure, and the booking
+ * task is reopened, since nothing is booked for it any more.
+ */
+export function cancelBooking(plan: Plan, vendorId: string, now: Date = new Date()): PlanUpdate {
+  const vendor = plan.vendors.find((v) => v.id === vendorId);
+  if (!vendor) throw new PlanError("Vendor not found.");
+  if (vendor.status !== "booked") throw new PlanError(`${vendor.name} isn't booked.`);
+
+  const vendors = plan.vendors.map((v) => (v.id === vendorId ? { ...v, status: "quoted" as const } : v));
+  const { total, count } = bookedIn(vendors, vendor.category);
+  const budget = plan.budget.map((line) => {
+    if (line.category !== vendor.category) return line;
+    return count > 0 ? { ...line, amount: total } : { ...line, source: "estimate" as const };
+  });
+  const effects: ChangeEffect[] = [
+    count > 0
+      ? {
+          tone: "info",
+          message: `${label(vendor.category)} now ${formatInr(total)} confirmed across ${count} ${count === 1 ? "vendor" : "vendors"}`,
+        }
+      : {
+          tone: "warning",
+          message: `${label(vendor.category)} is an estimate again. Get fresh quotes before rebooking.`,
+        },
+  ];
+
+  const taskId = BOOKING_TASK[vendor.category];
+  const reopened = count === 0 ? plan.tasks.find((t) => t.id === taskId && t.status === "done") : undefined;
+  const tasks = reopened ? plan.tasks.map((t) => (t === reopened ? { ...t, status: "todo" as const } : t)) : plan.tasks;
+  if (reopened) effects.push({ tone: "warning", message: `Reopened “${reopened.title}”` });
+
+  return { plan: stamp({ ...plan, budget, tasks, vendors }, now), effects };
 }
