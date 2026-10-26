@@ -118,7 +118,7 @@ For Groq, use `--set-secrets GROQ_API_KEY=groq-api-key:latest` instead. Store ke
 
 **Security.** API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts and styles never run, plus other security headers. User content is never logged.
 
-**Efficiency.** Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
+**Efficiency.** Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes, in memory or in Upstash Redis when it is configured. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
 
 **Reliability.** Every plan operation checks its result against the same schema used to load saved plans, so no change can store a plan that would fail to load next time. Out-of-range input is refused with a plain-language reason instead.
 
@@ -129,7 +129,7 @@ For Groq, use `--set-secrets GROQ_API_KEY=groq-api-key:latest` instead. Store ke
 ## Limitations
 
 - Plans are stored in the browser only, so there is no sharing or sync across devices.
-- The rate limiter and cache are per server instance.
+- The rate limiter and cache are per server instance unless Upstash Redis is configured (`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`), which shares them across instances. If Redis is unreachable, requests are still served and the failure is logged.
 - Budget weights and per-guest assumptions are illustrative starting points (`src/lib/domain/assumptions.ts`), not market data.
 
 ## License

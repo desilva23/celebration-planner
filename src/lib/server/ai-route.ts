@@ -3,13 +3,17 @@ import { createHash } from "node:crypto";
 import type { z } from "zod";
 import type { AiEnvelope } from "../ai/contracts";
 import { AiProviderError, AiUnavailableError } from "../ai/errors";
-import { clientKey, createRateLimiter } from "./rate-limit";
-import { createTtlCache } from "./ttl-cache";
+import { clientKey } from "./rate-limit";
+import { createStores } from "./stores";
 
 const MAX_BODY_BYTES = 32_000;
 
-const limiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
-const cache = createTtlCache<AiEnvelope<unknown>>({ maxEntries: 200, ttlMs: 10 * 60_000 });
+const { limiter, cache } = createStores<AiEnvelope<unknown>>({
+  limit: 20,
+  windowMs: 60_000,
+  ttlMs: 10 * 60_000,
+  maxEntries: 200,
+});
 
 function fail(status: number, message: string, headers?: Record<string, string>, issues?: string[]): Response {
   return Response.json({ error: message, ...(issues ? { issues } : {}) }, { status, headers });
@@ -64,7 +68,7 @@ export function aiRoute<I, O>({ name, input, run, fallback }: AiRouteOptions<I, 
   return async function POST(request: Request): Promise<Response> {
     if (!fromThisSite(request)) return fail(403, "Cross-site requests are not allowed.");
 
-    const limit = limiter.check(clientKey(request));
+    const limit = await limiter.check(clientKey(request));
     if (!limit.ok) {
       return fail(429, "Too many requests. Wait a moment and try again.", {
         "Retry-After": String(limit.retryAfterSeconds),
@@ -90,12 +94,12 @@ export function aiRoute<I, O>({ name, input, run, fallback }: AiRouteOptions<I, 
     }
 
     const key = createHash("sha256").update(name).update(JSON.stringify(parsed.data)).digest("hex");
-    const cached = cache.get(key);
+    const cached = await cache.get(key);
     if (cached) return Response.json(cached);
 
     try {
       const envelope: AiEnvelope<O> = { source: "ai", data: await run(parsed.data) };
-      cache.set(key, envelope);
+      await cache.set(key, envelope);
       return Response.json(envelope);
     } catch (error) {
       const unconfigured = error instanceof AiUnavailableError;
