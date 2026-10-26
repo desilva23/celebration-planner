@@ -133,10 +133,12 @@ describe("VendorPanel", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    it("can be removed, with a button that names it", async () => {
-      const { user, onChange } = setup(withVendors(vendor(), vendor({ id: "v2", name: "Rose Garden" })));
+    it("can be removed, with a button that names it, as a change that can be undone", async () => {
+      const { user, onUpdate } = setup(withVendors(vendor(), vendor({ id: "v2", name: "Rose Garden" })));
       await user.click(screen.getByRole("button", { name: "Remove Lotus Hall" }));
-      expect(savedVendors(onChange).map((v: Vendor) => v.name)).toEqual(["Rose Garden"]);
+      const [update, heading] = onUpdate.mock.calls[0]!;
+      expect(heading).toBe("Lotus Hall removed");
+      expect(update.plan.vendors.map((v: Vendor) => v.name)).toEqual(["Rose Garden"]);
     });
 
     it("shows a booked vendor's confirmed price instead of actions", () => {

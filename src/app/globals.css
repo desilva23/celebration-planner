@@ -817,6 +817,12 @@ td ul {
   gap: 0.5rem;
 }
 
+.toast-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .toast h2 {
   font-size: 1rem;
   margin: 0;

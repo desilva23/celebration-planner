@@ -24,15 +24,24 @@ export interface PanelProps {
   onUpdate: (update: PlanUpdate, heading: string) => void;
 }
 
+interface UndoableReport extends EffectsReport {
+  /** The plan before and after the reported change. */
+  change?: { before: Plan; after: Plan };
+}
+
 export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan: Plan) => void }) {
   const today = todayIso();
-  const [report, setReport] = useState<EffectsReport | null>(null);
+  const [report, setReport] = useState<UndoableReport | null>(null);
 
   const onUpdate = (update: PlanUpdate, heading: string) => {
     onChange(update.plan);
-    setReport({ heading, items: update.effects });
+    setReport({ heading, items: update.effects, change: { before: plan, after: update.plan } });
   };
   const panel: PanelProps = { plan, today, onChange, onUpdate };
+
+  // Undo is offered only while the plan is still the one the change produced,
+  // so it can never silently throw away something done since.
+  const undo = report?.change?.after === plan ? { before: report.change.before, heading: report.heading } : null;
 
   const { brief } = plan;
   const summary = summariseBudget(plan.budget, brief);
@@ -93,7 +102,22 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
       <VendorPanel {...panel} />
       <IdeasPanel plan={plan} />
 
-      <EffectsToast report={report} onDismiss={() => setReport(null)} />
+      <EffectsToast
+        report={report}
+        onDismiss={() => setReport(null)}
+        onUndo={
+          undo
+            ? () => {
+                onChange(undo.before);
+                setReport({
+                  heading: `Undone: ${undo.heading}`,
+                  items: [],
+                  summary: "Your plan is back to how it was.",
+                });
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

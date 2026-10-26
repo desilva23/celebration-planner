@@ -61,7 +61,7 @@ export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
               vendor={vendor}
               onSave={(v) => onChange(upsertVendor(plan, v))}
               onBook={() => book(vendor)}
-              onRemove={() => onChange(removeVendor(plan, vendor.id))}
+              onRemove={() => onUpdate({ plan: removeVendor(plan, vendor.id), effects: [] }, `${vendor.name} removed`)}
             />
           ))}
         </ul>
