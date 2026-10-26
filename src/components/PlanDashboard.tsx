@@ -6,6 +6,7 @@ import { formatDate, formatInr } from "@/lib/domain/format";
 import type { PlanUpdate } from "@/lib/domain/plan";
 import type { Plan } from "@/lib/domain/schema";
 import { summariseBudget } from "@/lib/domain/budget";
+import { summarisePayments, type DuePayment } from "@/lib/domain/payments";
 import { nextActions } from "@/lib/domain/timeline";
 import { BudgetPanel } from "./BudgetPanel";
 import { ChangePanel } from "./ChangePanel";
@@ -48,6 +49,9 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
   const daysLeft = daysBetween(today, brief.eventDate);
   const done = plan.tasks.filter((t) => t.status === "done").length;
   const upNext = nextActions(plan.tasks, 1)[0];
+  const payments = summarisePayments(plan.vendors, today);
+  const describe = ({ vendor, payment }: DuePayment) =>
+    `${formatInr(payment.amount)} to ${vendor} (${payment.label}, due ${formatDate(payment.dueDate)})`;
 
   return (
     <div className="dashboard">
@@ -80,10 +84,20 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
             The plan is {formatInr(summary.overBy)} over budget. <a href="#budget">Choose a trade-off</a>.
           </p>
         )}
+        {payments.overdue.length > 0 && (
+          <p className="callout warning">
+            Overdue: {payments.overdue.map(describe).join("; ")}. <a href="#vendors">See vendors</a>
+          </p>
+        )}
         {upNext && (
           <p className="next-up">
             <strong>Next up:</strong> {upNext.title}, due {formatDate(upNext.dueDate)}.{" "}
             <a href="#timeline">See the timeline</a>
+          </p>
+        )}
+        {payments.next && (
+          <p className="next-up">
+            <strong>Next payment:</strong> {describe(payments.next)}.
           </p>
         )}
       </section>

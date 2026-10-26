@@ -22,6 +22,7 @@ export function vendor(overrides: Partial<Vendor> = {}): Vendor {
     quote: null,
     status: "considering",
     notes: "",
+    payments: [],
     ...overrides,
   };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addDays } from "./dates";
 import { TODAY, weddingBrief } from "./fixtures.test-helpers";
 import {
+  addPayment,
   applyChange,
   applyTradeoff,
   bookVendor,
@@ -9,12 +10,14 @@ import {
   createPlan,
   delayTaskInPlan,
   PlanError,
+  removePayment,
   removeVendor,
   setBudgetAmount,
+  setPaymentPaid,
   setTaskStatus,
   upsertVendor,
 } from "./plan";
-import { PlanSchema, type Plan, type PlanChange, type Vendor } from "./schema";
+import { PlanSchema, type Payment, type Plan, type PlanChange, type Vendor } from "./schema";
 import { tradeoffOptions } from "./tradeoffs";
 
 const NOW = new Date("2026-10-25T06:30:00Z");
@@ -31,6 +34,7 @@ const venueVendor: Vendor = {
   quote: 150_000,
   status: "quoted",
   notes: "",
+  payments: [],
 };
 
 function deepFreeze<T>(value: T): T {
@@ -84,6 +88,9 @@ describe("plan validity", () => {
     const base = upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor);
     const plan = deepFreeze(base);
     const over = deepFreeze(applyChange(base, { guestCount: 250 }, TODAY).plan);
+    const withPayment = deepFreeze(
+      addPayment(base, "v1", { id: "p", label: "Advance", amount: 1, dueDate: "2026-11-15", paid: false }).plan,
+    );
     // Writing to a frozen object throws in strict-mode modules, so any mutation fails here.
     const results = [
       applyChange(
@@ -98,6 +105,9 @@ describe("plan validity", () => {
       removeVendor(plan, "v1"),
       bookVendor(plan, "v1").plan,
       cancelBooking(deepFreeze(bookVendor(plan, "v1").plan), "v1").plan,
+      addPayment(plan, "v1", { id: "p", label: "Advance", amount: 1, dueDate: "2026-11-15", paid: false }).plan,
+      setPaymentPaid(withPayment, "v1", "p", true),
+      removePayment(withPayment, "v1", "p"),
       ...tradeoffOptions(over)
         .filter((o) => o.feasible)
         .map((o) => applyTradeoff(over, o)),
@@ -121,6 +131,7 @@ describe("applyChange", () => {
       quote: 70_000,
       status: "quoted",
       notes: "",
+      payments: [],
     });
     plan = bookVendor(plan, "v1").plan;
     const before = plan;
@@ -160,6 +171,7 @@ describe("applyChange", () => {
       quote: 250_000,
       status: "quoted",
       notes: "",
+      payments: [],
     });
     plan = bookVendor(plan, "c1").plan;
     const { effects } = applyChange(plan, { guestCount: 260 }, TODAY);
@@ -268,6 +280,7 @@ describe("bookVendor", () => {
       quote: 150_000,
       status: "quoted",
       notes: "",
+      payments: [],
     });
     const { plan: booked } = bookVendor(plan, "v1");
     expect(line(booked, "venue")).toMatchObject({ amount: 150_000, source: "confirmed" });
@@ -285,6 +298,7 @@ describe("bookVendor", () => {
       quote: null,
       status: "considering",
       notes: "",
+      payments: [],
     });
     expect(() => bookVendor(plan, "v1")).toThrow(PlanError);
   });
@@ -420,5 +434,59 @@ describe("cancelBooking", () => {
   it("must come before removing a booked vendor", () => {
     const booked = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
     expect(() => removeVendor(booked, "v1")).toThrow("Cancel the booking before removing this vendor.");
+  });
+});
+
+describe("payments", () => {
+  const advance: Payment = { id: "pay1", label: "Advance", amount: 50_000, dueDate: "2026-11-15", paid: false };
+  const booked = () => bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+
+  it("schedules a payment and says what is due when", () => {
+    const { plan, effects } = addPayment(booked(), "v1", advance);
+    expect(plan.vendors[0]!.payments).toEqual([advance]);
+    expect(effects).toEqual([{ tone: "info", message: "Advance: ₹50,000 to Lotus Hall, due 15 Nov 2026" }]);
+  });
+
+  it("warns when payments add up to more than the quote", () => {
+    const plan = addPayment(booked(), "v1", advance).plan;
+    const { effects } = addPayment(plan, "v1", { ...advance, id: "pay2", label: "Balance", amount: 120_000 });
+    expect(effects.at(-1)).toEqual({
+      tone: "warning",
+      message: "Payments to Lotus Hall add up to ₹1,70,000, more than their ₹1,50,000 quote.",
+    });
+  });
+
+  it("doesn't compare against a quote that was never recorded", () => {
+    const plan = upsertVendor(createPlan(weddingBrief(), TODAY), {
+      ...venueVendor,
+      quote: null,
+      status: "considering",
+    });
+    expect(addPayment(plan, "v1", advance).effects).toHaveLength(1);
+  });
+
+  it.each([[{ amount: 0 }], [{ amount: 2.5 }], [{ label: "  " }], [{ dueDate: "2026-02-30" }]])(
+    "refuses a payment the plan couldn't hold: %o",
+    (overrides) => {
+      expect(() => addPayment(booked(), "v1", { ...advance, ...overrides })).toThrow(
+        "A payment needs a name, an amount above ₹0 and a real due date.",
+      );
+    },
+  );
+
+  it("marks one payment paid and back again, and removes it, leaving everything else alone", () => {
+    const decorator: Vendor = { ...venueVendor, id: "d1", category: "decor", name: "Petal Works" };
+    let plan = upsertVendor(booked(), decorator);
+    plan = addPayment(plan, "v1", advance).plan;
+    plan = addPayment(plan, "v1", { ...advance, id: "pay2", label: "Balance" }).plan;
+    plan = setPaymentPaid(plan, "v1", "pay1", true);
+    expect(plan.vendors[0]!.payments.map((p) => p.paid)).toEqual([true, false]);
+    expect(plan.vendors[1]).toEqual(decorator);
+    expect(setPaymentPaid(plan, "v1", "pay1", false).vendors[0]!.payments[0]!.paid).toBe(false);
+    expect(removePayment(plan, "v1", "pay1").vendors[0]!.payments.map((p) => p.id)).toEqual(["pay2"]);
+  });
+
+  it("refuses a vendor that isn't in the plan", () => {
+    expect(() => setPaymentPaid(booked(), "nope", "pay1", true)).toThrow("Vendor not found.");
   });
 });

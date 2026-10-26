@@ -2,10 +2,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setBudgetAmount } from "@/lib/domain/plan";
+import { addPayment, bookVendor, setBudgetAmount, upsertVendor } from "@/lib/domain/plan";
 import type { Plan } from "@/lib/domain/schema";
 import { axeViolations } from "@/test/axe";
-import { freezeToday, weddingPlan } from "@/test/plan";
+import { freezeToday, vendor, weddingPlan } from "@/test/plan";
 import { PlanDashboard } from "./PlanDashboard";
 
 /** Holds the plan in state, as the real app does, so changes re-render. */
@@ -74,6 +74,31 @@ describe("PlanDashboard", () => {
     const plan = weddingPlan();
     render(<Harness initial={{ ...plan, brief: { ...plan.brief, eventDate } }} />);
     expect(stat("Days to go")).toHaveTextContent(label);
+  });
+
+  it("flags overdue payments and shows the next one due", () => {
+    let plan = bookVendor(upsertVendor(weddingPlan(), vendor({ quote: 150_000, status: "quoted" })), "v1").plan;
+    plan = addPayment(plan, "v1", {
+      id: "a",
+      label: "Advance",
+      amount: 50_000,
+      dueDate: "2026-10-20",
+      paid: false,
+    }).plan;
+    plan = addPayment(plan, "v1", {
+      id: "b",
+      label: "Balance",
+      amount: 100_000,
+      dueDate: "2027-02-20",
+      paid: false,
+    }).plan;
+    render(<Harness initial={plan} />);
+    expect(screen.getByText(/^Overdue:/)).toHaveTextContent(
+      "Overdue: ₹50,000 to Lotus Hall (Advance, due 20 Oct 2026). See vendors",
+    );
+    expect(screen.getByText("Next payment:").closest("p")).toHaveTextContent(
+      "Next payment: ₹1,00,000 to Lotus Hall (Balance, due 20 Feb 2027).",
+    );
   });
 
   it("drops the next-up hint once nothing is ready to start", () => {

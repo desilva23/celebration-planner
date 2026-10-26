@@ -4,12 +4,23 @@ import { useState, type SubmitEvent } from "react";
 import type { CompareQuotesResult, QuoteSummary, VendorBriefResult } from "@/lib/ai/contracts";
 import { newId, useAiCall } from "@/lib/client/api";
 import { formatInr } from "@/lib/domain/format";
-import { bookVendor, cancelBooking, PlanError, removeVendor, upsertVendor, type PlanUpdate } from "@/lib/domain/plan";
+import {
+  addPayment,
+  bookVendor,
+  cancelBooking,
+  PlanError,
+  removePayment,
+  removeVendor,
+  setPaymentPaid,
+  upsertVendor,
+  type PlanUpdate,
+} from "@/lib/domain/plan";
 import type { CategoryId, Plan, Vendor } from "@/lib/domain/schema";
 import type { PanelProps } from "./PlanDashboard";
 import { categoryLabel, ErrorMessage, Provenance, Section } from "./ui";
+import { VendorPayments, type PaymentActions } from "./VendorPayments";
 
-export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
+export function VendorPanel({ plan, today, onChange, onUpdate }: PanelProps) {
   const categories = plan.budget.map((l) => l.category).filter((c) => c !== "contingency");
   const [category, setCategory] = useState<CategoryId>(categories[0] ?? "venue");
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -24,6 +35,22 @@ export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
     } catch (error) {
       setBookingError(error instanceof PlanError ? error.message : "Couldn't update the booking.");
     }
+  }
+
+  function paymentActions(vendor: Vendor): PaymentActions {
+    return {
+      schedule(payment) {
+        try {
+          onUpdate(addPayment(plan, vendor.id, payment), `Payment to ${vendor.name} scheduled`);
+          return null;
+        } catch (error) {
+          return error instanceof PlanError ? error.message : "Couldn't schedule the payment.";
+        }
+      },
+      setPaid: (paymentId, paid) => onChange(setPaymentPaid(plan, vendor.id, paymentId, paid)),
+      remove: (paymentId) =>
+        onUpdate({ plan: removePayment(plan, vendor.id, paymentId), effects: [] }, "Payment removed"),
+    };
   }
 
   return (
@@ -60,6 +87,8 @@ export function VendorPanel({ plan, onChange, onUpdate }: PanelProps) {
             <VendorRow
               key={`${vendor.id}-${vendor.quote}-${vendor.status}`}
               vendor={vendor}
+              today={today}
+              payments={paymentActions(vendor)}
               onSave={(v) => onChange(upsertVendor(plan, v))}
               onBook={() => changeBooking(() => bookVendor(plan, vendor.id), `${vendor.name} booked`)}
               onCancel={() => changeBooking(() => cancelBooking(plan, vendor.id), `${vendor.name} booking cancelled`)}
@@ -143,12 +172,16 @@ function VendorBrief({
 
 function VendorRow({
   vendor,
+  today,
+  payments,
   onSave,
   onBook,
   onCancel,
   onRemove,
 }: {
   vendor: Vendor;
+  today: string;
+  payments: PaymentActions;
   onSave: (v: Vendor) => void;
   onBook: () => void;
   onCancel: () => void;
@@ -206,6 +239,10 @@ function VendorRow({
           </button>
         </div>
       )}
+      {/* Payments belong to bookings, but stay visible if a booking with payments is cancelled. */}
+      {(vendor.status === "booked" || vendor.payments.length > 0) && (
+        <VendorPayments vendor={vendor} today={today} actions={payments} />
+      )}
     </li>
   );
 }
@@ -229,6 +266,7 @@ function AddVendor({ category, onAdd }: { category: CategoryId; onAdd: (v: Vendo
       quote: validQuote,
       status: validQuote !== null ? "quoted" : "considering",
       notes: notes.trim().slice(0, 500),
+      payments: [],
     });
     setName("");
     setContact("");
@@ -464,6 +502,7 @@ function QuoteComparison({
                               quote: total,
                               status: total === null ? "considering" : "quoted",
                               notes: q.needsClarification.slice(0, 2).join(" ").slice(0, 500),
+                              payments: [],
                             })
                           }
                         >

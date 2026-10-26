@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { applyChange, bookVendor, setBudgetAmount, upsertVendor } from "@/lib/domain/plan";
+import { addPayment, applyChange, bookVendor, setBudgetAmount, upsertVendor } from "@/lib/domain/plan";
 import type { Plan } from "@/lib/domain/schema";
 import { TODAY } from "@/lib/domain/fixtures.test-helpers";
 import { axeViolations } from "@/test/axe";
@@ -35,6 +35,19 @@ describe("BudgetPanel", () => {
     expect(screen.getByRole("rowheader", { name: "Total" }).nextElementSibling).toHaveTextContent("₹8,00,000");
     expect(screen.queryByText(/What would you rather give up/)).not.toBeInTheDocument();
     expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it("shows how much has already been paid to vendors", () => {
+    let plan = bookVendor(upsertVendor(weddingPlan(), vendor({ quote: 150_000, status: "quoted" })), "v1").plan;
+    plan = addPayment(plan, "v1", {
+      id: "a",
+      label: "Advance",
+      amount: 50_000,
+      dueDate: "2026-10-20",
+      paid: true,
+    }).plan;
+    setup(plan);
+    expect(total()).toMatch(/ · ₹50,000 paid$/);
   });
 
   it("shows money still unallocated and what's already confirmed", () => {

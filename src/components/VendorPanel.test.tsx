@@ -66,6 +66,7 @@ describe("VendorPanel", () => {
           quote: 150_000,
           status: "quoted",
           notes: "Has parking",
+          payments: [],
         },
       ]);
       expect(screen.getByLabelText("Business name")).toHaveValue("");

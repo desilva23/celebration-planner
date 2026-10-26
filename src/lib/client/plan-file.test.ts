@@ -1,12 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { captureDownloads } from "@/test/downloads";
-import { weddingPlan } from "@/test/plan";
+import { vendor, weddingPlan } from "@/test/plan";
 import { downloadFile, parsePlan } from "./plan-file";
 
 describe("parsePlan", () => {
   it("reads a plan back from its JSON", () => {
     const plan = weddingPlan();
     expect(parsePlan(JSON.stringify(plan))).toEqual(plan);
+  });
+
+  it("opens plans saved before vendors had payments", () => {
+    const plan = { ...weddingPlan(), vendors: [vendor({ quote: 150_000, status: "quoted" })] };
+    const saved = JSON.parse(JSON.stringify(plan)) as { vendors: Record<string, unknown>[] };
+    delete saved.vendors[0]!.payments;
+    expect(parsePlan(JSON.stringify(saved))).toEqual(plan);
   });
 
   it.each([

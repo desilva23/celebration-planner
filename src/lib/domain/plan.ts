@@ -11,11 +11,13 @@ import {
   MAX_GUESTS,
   MIN_BUDGET,
   PlanChangeSchema,
+  PaymentSchema,
   PlanSchema,
   type CategoryId,
   type EventBrief,
   type Plan,
   type PlanChange,
+  type Payment,
   type Task,
   type Vendor,
 } from "./schema";
@@ -221,6 +223,12 @@ export function removeVendor(plan: Plan, vendorId: string, now: Date = new Date(
   return stamp({ ...plan, vendors: plan.vendors.filter((v) => v.id !== vendorId) }, now);
 }
 
+function vendorIn(plan: Plan, vendorId: string): Vendor {
+  const vendor = plan.vendors.find((v) => v.id === vendorId);
+  if (!vendor) throw new PlanError("Vendor not found.");
+  return vendor;
+}
+
 /** The quotes booked in `category`; a booking without a recorded quote adds nothing. */
 function bookedIn(vendors: Vendor[], category: CategoryId): { total: number; count: number } {
   const booked = vendors.filter((v) => v.category === category && v.status === "booked");
@@ -234,8 +242,7 @@ function bookedIn(vendors: Vendor[], category: CategoryId): { total: number; cou
  * adds to that total rather than replacing it.
  */
 export function bookVendor(plan: Plan, vendorId: string, now: Date = new Date()): PlanUpdate {
-  const vendor = plan.vendors.find((v) => v.id === vendorId);
-  if (!vendor) throw new PlanError("Vendor not found.");
+  const vendor = vendorIn(plan, vendorId);
   if (vendor.status === "booked") throw new PlanError(`${vendor.name} is already booked.`);
   if (vendor.quote === null) throw new PlanError("Record the vendor's quote before marking it booked.");
 
@@ -279,8 +286,7 @@ export function bookVendor(plan: Plan, vendorId: string, now: Date = new Date())
  * task is reopened, since nothing is booked for it any more.
  */
 export function cancelBooking(plan: Plan, vendorId: string, now: Date = new Date()): PlanUpdate {
-  const vendor = plan.vendors.find((v) => v.id === vendorId);
-  if (!vendor) throw new PlanError("Vendor not found.");
+  const vendor = vendorIn(plan, vendorId);
   if (vendor.status !== "booked") throw new PlanError(`${vendor.name} isn't booked.`);
 
   const vendors = plan.vendors.map((v) => (v.id === vendorId ? { ...v, status: "quoted" as const } : v));
@@ -307,4 +313,46 @@ export function cancelBooking(plan: Plan, vendorId: string, now: Date = new Date
   if (reopened) effects.push({ tone: "warning", message: `Reopened “${reopened.title}”` });
 
   return { plan: stamp({ ...plan, budget, tasks, vendors }, now), effects };
+}
+
+function withPayments(plan: Plan, vendorId: string, update: (payments: Payment[]) => Payment[], now: Date): Plan {
+  const vendor = vendorIn(plan, vendorId);
+  const vendors = plan.vendors.map((v) => (v === vendor ? { ...v, payments: update(v.payments) } : v));
+  return stamp({ ...plan, vendors }, now);
+}
+
+/** Schedules a payment to a vendor, and warns when the schedule adds up to more than their quote. */
+export function addPayment(plan: Plan, vendorId: string, payment: Payment, now: Date = new Date()): PlanUpdate {
+  if (!PaymentSchema.safeParse(payment).success) {
+    throw new PlanError("A payment needs a name, an amount above ₹0 and a real due date.");
+  }
+  const vendor = vendorIn(plan, vendorId);
+  const next = withPayments(plan, vendorId, (payments) => [...payments, payment], now);
+  const scheduled = [...vendor.payments, payment].reduce((sum, p) => sum + p.amount, 0);
+  const effects: ChangeEffect[] = [
+    {
+      tone: "info",
+      message: `${payment.label}: ${formatInr(payment.amount)} to ${vendor.name}, due ${formatDate(payment.dueDate)}`,
+    },
+  ];
+  if (vendor.quote !== null && scheduled > vendor.quote) {
+    effects.push({
+      tone: "warning",
+      message: `Payments to ${vendor.name} add up to ${formatInr(scheduled)}, more than their ${formatInr(vendor.quote)} quote.`,
+    });
+  }
+  return { plan: next, effects };
+}
+
+export function setPaymentPaid(plan: Plan, vendorId: string, paymentId: string, paid: boolean, now = new Date()): Plan {
+  return withPayments(
+    plan,
+    vendorId,
+    (payments) => payments.map((p) => (p.id === paymentId ? { ...p, paid } : p)),
+    now,
+  );
+}
+
+export function removePayment(plan: Plan, vendorId: string, paymentId: string, now: Date = new Date()): Plan {
+  return withPayments(plan, vendorId, (payments) => payments.filter((p) => p.id !== paymentId), now);
 }

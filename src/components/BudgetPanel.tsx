@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CATEGORY_META } from "@/lib/domain/assumptions";
 import { summariseBudget } from "@/lib/domain/budget";
 import { formatInr } from "@/lib/domain/format";
+import { summarisePayments } from "@/lib/domain/payments";
 import { applyChange, applyTradeoff, PlanError, setBudgetAmount } from "@/lib/domain/plan";
 import type { BudgetLine, CategoryId } from "@/lib/domain/schema";
 import { tradeoffOptions, type TradeoffOption } from "@/lib/domain/tradeoffs";
@@ -16,6 +17,7 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
   const { brief } = plan;
   const summary = summariseBudget(plan.budget, brief);
   const options = tradeoffOptions(plan);
+  const { paid } = summarisePayments(plan.vendors, today);
   const [priorityError, setPriorityError] = useState<string | null>(null);
 
   function choose(option: TradeoffOption) {
@@ -60,6 +62,7 @@ export function BudgetPanel({ plan, today, onChange, onUpdate }: PanelProps) {
           <span> · fully allocated</span>
         )}
         {summary.confirmed > 0 && <span> · {formatInr(summary.confirmed)} confirmed</span>}
+        {paid > 0 && <span> · {formatInr(paid)} paid</span>}
       </p>
       <meter
         className="budget-meter"

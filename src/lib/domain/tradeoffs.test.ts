@@ -24,6 +24,7 @@ function booked(plan: Plan, category: CategoryId, quote: number): Plan {
     quote,
     status: "quoted",
     notes: "",
+    payments: [],
   });
   return bookVendor(withVendor, id).plan;
 }
