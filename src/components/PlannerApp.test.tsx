@@ -2,7 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { savePlan } from "@/lib/client/plan-store";
+import { discardSetAsidePlan, savePlan, setAsideSavedPlan } from "@/lib/client/plan-store";
+import { captureDownloads } from "@/test/downloads";
 import { freezeToday, weddingPlan } from "@/test/plan";
 import { PlannerApp } from "./PlannerApp";
 
@@ -11,7 +12,37 @@ let scrollTo: MockInstance<typeof window.scrollTo>;
 beforeEach(() => {
   freezeToday();
   savePlan(null);
+  discardSetAsidePlan();
   scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+});
+
+describe("a plan that was set aside", () => {
+  it("is offered for download alongside a fresh start", async () => {
+    const plan = weddingPlan({ title: "Old plan" });
+    savePlan(plan);
+    setAsideSavedPlan();
+    const files = captureDownloads();
+    render(<PlannerApp aiProvider={null} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(/^Your previous plan was set aside\./);
+    expect(screen.getByRole("heading", { level: 1, name: /survives real life/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Download the copy" }));
+    expect(files.map((f) => f.name)).toEqual(["previous-celebration-plan.json"]);
+    expect(JSON.parse(await files[0]!.blob.text())).toEqual(plan);
+  });
+
+  it("is only removed after the user confirms", async () => {
+    savePlan(weddingPlan());
+    setAsideSavedPlan();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(<PlannerApp aiProvider={null} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove the copy" }));
+    expect(confirm).toHaveBeenCalledWith("Remove the copy of your previous plan? This can't be undone.");
+    expect(screen.getByText(/previous plan was set aside/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove the copy" }));
+    expect(screen.queryByText(/previous plan was set aside/)).not.toBeInTheDocument();
+  });
 });
 
 describe("PlannerApp", () => {
