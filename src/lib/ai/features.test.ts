@@ -9,9 +9,9 @@ import {
   type CompareQuotesRequest,
   type QuoteSummary,
 } from "./contracts";
-import { compareQuotes, interpret, prepareVendorBrief, suggestIdeas } from "./features";
+import { compareQuotes, draftRunSheet, interpret, prepareVendorBrief, suggestIdeas } from "./features";
 import { generateStructured } from "./llm";
-import { INTERPRET_SYSTEM, interpretPrompt, vendorBriefSystem } from "./prompts";
+import { INTERPRET_SYSTEM, interpretPrompt, RUN_SHEET_SYSTEM, vendorBriefSystem } from "./prompts";
 
 vi.mock("./llm", () => ({ generateStructured: vi.fn() }));
 const generate = vi.mocked(generateStructured);
@@ -186,5 +186,31 @@ describe("compareQuotes", () => {
     expect(quotes[0]).toMatchObject({ total: null, perGuest: 1250 });
     expect(quotes[1]).toMatchObject({ perGuest: null });
     expect(quotes[1]!.needsClarification[0]).toMatch(/per-guest price of ₹1,250 isn't stated/);
+  });
+});
+
+describe("draftRunSheet", () => {
+  const request = {
+    brief: weddingBrief(),
+    startTime: "18:00",
+    vendors: [{ category: "venue" as const, name: "Lotus Hall" }],
+  };
+
+  it("drafts with the larger model, limiting who to the booked vendors and the roles", async () => {
+    const reply = { items: [], reminders: [] };
+    generate.mockResolvedValueOnce(reply);
+    await expect(draftRunSheet(request)).resolves.toBe(reply);
+    const call = generate.mock.calls[0]![0];
+    expect(call).toMatchObject({
+      name: "run_sheet_result",
+      system: RUN_SHEET_SYSTEM,
+      model: "smart",
+      temperature: 0.5,
+      timeoutMs: 30_000,
+    });
+    const step = (who: string) => ({ time: "18:00", title: "Step", details: "", who });
+    const sheet = (who: string) => ({ items: [step(who), step("Hosts"), step("Family")], reminders: [] });
+    expect(call.schema.safeParse(sheet("Lotus Hall")).success).toBe(true);
+    expect(call.schema.safeParse(sheet("Someone Else")).success).toBe(false);
   });
 });

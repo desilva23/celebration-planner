@@ -5,6 +5,7 @@ import {
   GeneratedIdeasSchema,
   IdeasResultSchema,
   InterpretResultSchema,
+  runSheetResultFor,
   VendorBriefResultSchema,
 } from "./contracts";
 import { fitToSchema, responseSchemas } from "./json-schema";
@@ -41,6 +42,7 @@ describe("responseSchemas", () => {
     ["ideas", GeneratedIdeasSchema],
     ["vendor brief", VendorBriefResultSchema],
     ["quotes", CompareQuotesResultSchema],
+    ["run sheet", runSheetResultFor(["Lotus Hall"])],
   ])("sends a portable %s schema that strict mode accepts", (_, schema) => {
     const { portable } = responseSchemas(schema);
     const keys = keysIn(portable);
@@ -80,6 +82,12 @@ describe("responseSchemas", () => {
     );
     expect(prop(portable, "total").description).toBe("The total; at most 5 characters");
     expect(prop(portable, "count").description).toBeUndefined();
+  });
+
+  it("explains a time format the model can't be sent as a pattern", () => {
+    const { portable } = responseSchemas(runSheetResultFor([]));
+    expect(JSON.stringify(portable)).toContain('"description":"24-hour time as HH:MM"');
+    expect(JSON.stringify(portable)).not.toContain("pattern");
   });
 
   // Regression: field names under `properties` used to be stripped like keywords.

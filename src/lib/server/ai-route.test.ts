@@ -3,6 +3,7 @@ import { z } from "zod";
 import { POST as compareQuotes } from "@/app/api/compare-quotes/route";
 import { POST as ideas } from "@/app/api/ideas/route";
 import { POST as interpret } from "@/app/api/interpret/route";
+import { POST as runSheet } from "@/app/api/run-sheet/route";
 import { POST as vendorBrief } from "@/app/api/vendor-brief/route";
 import { AiProviderError, AiUnavailableError } from "../ai/errors";
 import { allocateBudget } from "../domain/budget";
@@ -94,6 +95,11 @@ describe("AI routes", () => {
     expect(await ideasRes.json()).toMatchObject({ source: "fallback", data: { ideas: expect.any(Array) } });
     const briefRes = await vendorBrief(post({ category: "venue", brief, budgetForCategory: 176_000 }, client()));
     expect(await briefRes.json()).toMatchObject({ source: "fallback", data: { questions: expect.any(Array) } });
+  });
+
+  it("falls back to the built-in run sheet", async () => {
+    const res = await runSheet(post({ brief: weddingBrief(), startTime: "18:00", vendors: [] }, client()));
+    expect(await res.json()).toMatchObject({ source: "fallback", data: { items: expect.any(Array) } });
   });
 
   it("lists at most five validation problems, naming the field", async () => {

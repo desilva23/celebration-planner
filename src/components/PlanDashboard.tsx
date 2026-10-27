@@ -13,6 +13,7 @@ import { ChangePanel } from "./ChangePanel";
 import { EffectsToast, type EffectsReport } from "./EffectsToast";
 import { GuestsPanel } from "./GuestsPanel";
 import { PlanSharing } from "./PlanSharing";
+import { RunSheetPanel } from "./RunSheetPanel";
 import { IdeasPanel } from "./IdeasPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { EVENT_TYPE_LABEL } from "./ui";
@@ -109,6 +110,7 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
         <a href="#change">What changed?</a>
         <a href="#budget">Budget</a>
         <a href="#timeline">Timeline</a>
+        <a href="#on-the-day">On the day</a>
         <a href="#vendors">Vendors</a>
         <a href="#guests">Guests</a>
         <a href="#ideas">Ideas</a>
@@ -117,6 +119,7 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
       <ChangePanel {...panel} />
       <BudgetPanel {...panel} />
       <TimelinePanel {...panel} />
+      <RunSheetPanel plan={plan} />
       <VendorPanel {...panel} />
       <GuestsPanel {...panel} />
       <IdeasPanel plan={plan} />

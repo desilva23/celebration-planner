@@ -51,7 +51,7 @@ describe("PlanDashboard", () => {
       within(nav)
         .getAllByRole("link")
         .map((a) => a.getAttribute("href")),
-    ).toEqual(["#change", "#budget", "#timeline", "#vendors", "#guests", "#ideas"]);
+    ).toEqual(["#change", "#budget", "#timeline", "#on-the-day", "#vendors", "#guests", "#ideas"]);
     expect(await axeViolations(container)).toEqual([]);
   });
 
