@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { allocateBudget } from "../domain/budget";
 import { TODAY, weddingBrief } from "../domain/fixtures.test-helpers";
 import { CATEGORIES, EVENT_TYPES, type EventBrief } from "../domain/schema";
-import { IdeasResultSchema, InterpretResultSchema, VendorBriefResultSchema } from "./contracts";
-import { ideasFallback, interpretFallback, vendorBriefFallback } from "./fallbacks";
+import { IdeasResultSchema, InterpretResultSchema, runSheetResultFor, VendorBriefResultSchema } from "./contracts";
+import { ideasFallback, interpretFallback, runSheetFallback, vendorBriefFallback } from "./fallbacks";
 
 describe("interpretFallback", () => {
   const brief = weddingBrief();
@@ -28,7 +28,11 @@ describe("interpretFallback", () => {
       today: TODAY,
     });
     expect(updates).toMatchObject({
-      eventType: "wedding", guestCount: 300, eventDate: "2027-01-20", totalBudget: 1_200_000, tier: "simple",
+      eventType: "wedding",
+      guestCount: 300,
+      eventDate: "2027-01-20",
+      totalBudget: 1_200_000,
+      tier: "simple",
     });
   });
 
@@ -42,7 +46,11 @@ describe("interpretFallback", () => {
   });
 
   it("ignores earlier clauses when picking priorities", () => {
-    const { updates } = interpretFallback({ message: "the venue is booked, food matters most", brief: null, today: TODAY });
+    const { updates } = interpretFallback({
+      message: "the venue is booked, food matters most",
+      brief: null,
+      today: TODAY,
+    });
     expect(updates.priorities).toEqual(["catering"]);
   });
 
@@ -173,7 +181,12 @@ describe("interpretFallback", () => {
     const messages = [
       "We've got 50 more guests now, budget dropped by 80k and the event is happening two weeks earlier",
       "Planning a wedding for 300 guests on 2027-01-20, budget is 12 lakh, keep it simple",
-      "6000 guests", "budget is 20 crore", "2027-13-45", "food matters most", "hello", "",
+      "6000 guests",
+      "budget is 20 crore",
+      "2027-13-45",
+      "food matters most",
+      "hello",
+      "",
     ];
     for (const message of messages) {
       for (const current of [brief, null]) {
@@ -219,7 +232,11 @@ describe("ideasFallback", () => {
 
 describe("vendorBriefFallback", () => {
   it("always covers headcount changes and cancellation", () => {
-    const { questions } = vendorBriefFallback({ category: "catering", brief: weddingBrief(), budgetForCategory: 256_000 });
+    const { questions } = vendorBriefFallback({
+      category: "catering",
+      brief: weddingBrief(),
+      budgetForCategory: 256_000,
+    });
     expect(questions.join(" ")).toMatch(/guest count changes/);
     expect(questions.join(" ")).toMatch(/cancellation/);
   });
@@ -231,18 +248,88 @@ describe("vendorBriefFallback", () => {
   });
 
   it("describes the event, mentioning the city and notes only when there are some", () => {
-    const full = vendorBriefFallback({ category: "venue", brief: weddingBrief({ notes: "x".repeat(300) }), budgetForCategory: 176_000 });
+    const full = vendorBriefFallback({
+      category: "venue",
+      brief: weddingBrief({ notes: "x".repeat(300) }),
+      budgetForCategory: 176_000,
+    });
     expect(full.requirements).toEqual([
       "200 guests on 1 Mar 2027 in Chennai",
       "Planned spend around ₹1,76,000",
       `Your notes: ${"x".repeat(120)}`,
     ]);
-    const bare = vendorBriefFallback({ category: "venue", brief: weddingBrief({ city: "", notes: "" }), budgetForCategory: 0 });
+    const bare = vendorBriefFallback({
+      category: "venue",
+      brief: weddingBrief({ city: "", notes: "" }),
+      budgetForCategory: 0,
+    });
     expect(bare.requirements).toEqual(["200 guests on 1 Mar 2027", "Planned spend around ₹0"]);
   });
 
   it.each(CATEGORIES)("answers within the AI's contract for %s", (category) => {
-    const result = vendorBriefFallback({ category, brief: weddingBrief({ notes: "n".repeat(1000) }), budgetForCategory: 1 });
+    const result = vendorBriefFallback({
+      category,
+      brief: weddingBrief({ notes: "n".repeat(1000) }),
+      budgetForCategory: 1,
+    });
     expect(VendorBriefResultSchema.safeParse(result).success).toBe(true);
+  });
+});
+
+describe("runSheetFallback", () => {
+  const request = { brief: weddingBrief(), startTime: "18:00", vendors: [] };
+
+  it("times each step around guest arrival", () => {
+    const { items } = runSheetFallback(request);
+    expect(items.map((i) => i.time)).toEqual([
+      "15:00",
+      "15:30",
+      "16:00",
+      "17:00",
+      "17:30",
+      "18:00",
+      "19:00",
+      "20:00",
+      "22:00",
+      "22:30",
+    ]);
+    expect(items[5]).toMatchObject({ title: "Guests arrive", who: "Hosts" });
+  });
+
+  it("names a booked vendor for their own steps, and a role for everything else", () => {
+    const { items } = runSheetFallback({
+      ...request,
+      vendors: [
+        { category: "catering", name: "Annapoorna" },
+        { category: "venue", name: "Lotus Hall" },
+      ],
+    });
+    expect(items.filter((i) => i.who === "Annapoorna").map((i) => i.title)).toEqual([
+      "Catering setup",
+      "Food is served",
+    ]);
+    expect(items[0]!.who).toBe("Lotus Hall");
+    expect(items.find((i) => i.title === "Decor finishing touches")!.who).toBe("Hosts");
+  });
+
+  it("wraps past midnight for late functions", () => {
+    const { items } = runSheetFallback({ ...request, startTime: "22:30" });
+    expect([items[0]!.time, items.at(-1)!.time]).toEqual(["19:30", "03:00"]);
+  });
+
+  it.each([
+    ["wedding", "Ceremony"],
+    ["birthday", "Cake cutting"],
+    ["anniversary", "Toasts and a few words from the family"],
+    ["community", "Main programme"],
+    ["other", "Main programme"],
+  ] as const)("centres a %s on its main moment", (eventType, moment) => {
+    expect(runSheetFallback({ ...request, brief: weddingBrief({ eventType }) }).items[6]!.title).toBe(moment);
+  });
+
+  it("answers within the same contract the AI is held to, naming no one else", () => {
+    const vendors = [{ category: "photography" as const, name: "Lens & Light" }];
+    const schema = runSheetResultFor(vendors.map((v) => v.name));
+    expect(schema.safeParse(runSheetFallback({ ...request, vendors })).success).toBe(true);
   });
 });

@@ -23,7 +23,10 @@ export function stubFetch() {
     },
     sent(): { url: string; body: unknown }[] {
       // The app always calls fetch with a path and a JSON string body.
-      return fetchMock.mock.calls.map(([url, init]) => ({ url: url as string, body: JSON.parse(init?.body as string) }));
+      return fetchMock.mock.calls.map(([url, init]) => ({
+        url: url as string,
+        body: JSON.parse(init?.body as string),
+      }));
     },
   };
 }

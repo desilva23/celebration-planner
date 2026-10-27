@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import { z } from "../zod";
 import { POST as compareQuotes } from "@/app/api/compare-quotes/route";
 import { POST as ideas } from "@/app/api/ideas/route";
 import { POST as interpret } from "@/app/api/interpret/route";
+import { POST as runSheet } from "@/app/api/run-sheet/route";
 import { POST as vendorBrief } from "@/app/api/vendor-brief/route";
 import { AiProviderError, AiUnavailableError } from "../ai/errors";
 import { allocateBudget } from "../domain/budget";
@@ -15,7 +16,10 @@ let clients = 0;
 const client = () => ({ "x-forwarded-for": `203.0.113.${++clients}` });
 
 let routes = 0;
-function route(run: (input: { message: string }) => Promise<string>, fallback?: (input: { message: string }) => string) {
+function route(
+  run: (input: { message: string }) => Promise<string>,
+  fallback?: (input: { message: string }) => string,
+) {
   return aiRoute({ name: `test-${++routes}`, input: z.object({ message: z.string().min(1) }), run, fallback });
 }
 
@@ -25,6 +29,20 @@ function post(body: unknown, headers: Record<string, string> = {}): Request {
     headers: { "content-type": "application/json", host: "localhost:3000", ...headers },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
+}
+
+/** A body sent as a stream, so it has no Content-Length, like a chunked upload. */
+function streamed(chunks: string[], onCancel: () => void = () => {}): Request {
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    },
+    cancel: onCancel,
+  });
+  const init = { method: "POST", headers: { ...client(), host: "localhost:3000" }, body, duplex: "half" };
+  return new Request("http://localhost:3000/api/x", init);
 }
 
 beforeEach(() => {
@@ -62,7 +80,9 @@ describe("AI routes", () => {
   it("returns 503 rather than guessing when quote reading needs AI", async () => {
     const res = await compareQuotes(
       post({
-        category: "catering", guestCount: 200, budgetForCategory: 250_000,
+        category: "catering",
+        guestCount: 200,
+        budgetForCategory: 250_000,
         quotes: [{ label: "A", text: "Veg menu at Rs 1,250 per plate for up to 200 guests." }],
       }),
     );
@@ -75,6 +95,11 @@ describe("AI routes", () => {
     expect(await ideasRes.json()).toMatchObject({ source: "fallback", data: { ideas: expect.any(Array) } });
     const briefRes = await vendorBrief(post({ category: "venue", brief, budgetForCategory: 176_000 }, client()));
     expect(await briefRes.json()).toMatchObject({ source: "fallback", data: { questions: expect.any(Array) } });
+  });
+
+  it("falls back to the built-in run sheet", async () => {
+    const res = await runSheet(post({ brief: weddingBrief(), startTime: "18:00", vendors: [] }, client()));
+    expect(await res.json()).toMatchObject({ source: "fallback", data: { items: expect.any(Array) } });
   });
 
   it("lists at most five validation problems, naming the field", async () => {
@@ -124,20 +149,27 @@ describe("aiRoute", () => {
   ])("logs only the type when the failure is %s", async (_, failure, logged) => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- non-Error rejections are under test
-    await route(() => Promise.reject(failure), () => "built-in")(post({ message: "my private plans" }, client()));
+    const fail = () => Promise.reject(failure);
+    await route(fail, () => "built-in")(post({ message: "my private plans" }, client()));
     expect(log).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`^\\[ai:test-\\d+\\] ${logged}$`)));
     expect(JSON.stringify(log.mock.calls)).not.toContain("private");
   });
 
   it("explains, without logging, when AI simply isn't configured", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = await route(() => Promise.reject(new AiUnavailableError("no key")), () => "built-in")(post({ message: "hi" }, client()));
+    const res = await route(
+      () => Promise.reject(new AiUnavailableError("no key")),
+      () => "built-in",
+    )(post({ message: "hi" }, client()));
     expect((await res.json()).notice).toBe("AI isn't configured on this server, so this is a built-in suggestion.");
     expect(log).not.toHaveBeenCalled();
   });
 
   it("doesn't cache a fallback, so the AI is tried again next time", async () => {
-    const run = vi.fn<() => Promise<string>>().mockRejectedValueOnce(new AiUnavailableError("no key")).mockResolvedValueOnce("ai");
+    const run = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new AiUnavailableError("no key"))
+      .mockResolvedValueOnce("ai");
     const handler = route(run, () => "built-in");
     const headers = client();
     expect((await (await handler(post({ message: "hi" }, headers))).json()).source).toBe("fallback");
@@ -169,8 +201,41 @@ describe("aiRoute", () => {
     expect(res.status).toBe(413);
   });
 
+  // Regression: a body with no Content-Length used to be read in full before
+  // its size was checked, so a large upload was buffered first.
+  it("stops reading a streamed body as soon as it passes the limit", async () => {
+    let cancelled = false;
+    const chunk = "x".repeat(10_000);
+    const res = await route(async () => "ok")(streamed([chunk, chunk, chunk, chunk, chunk], () => (cancelled = true)));
+    expect(res.status).toBe(413);
+    expect(cancelled).toBe(true);
+  });
+
+  it("measures the limit in bytes, not characters", async () => {
+    // 11,000 rupee signs are 11,000 characters but 33,000 bytes.
+    const res = await route(async () => "ok")(streamed([JSON.stringify({ message: "₹".repeat(11_000) })]));
+    expect(res.status).toBe(413);
+  });
+
+  it("reads a streamed body that fits, across several chunks", async () => {
+    const res = await route(async ({ message }) => message)(streamed(['{"mess', 'age":"₹ ok"}']));
+    expect(await res.json()).toEqual({ source: "ai", data: "₹ ok" });
+  });
+
+  it("treats a request with no body as invalid JSON", async () => {
+    const res = await route(async () => "ok")(
+      new Request("http://localhost:3000/api/x", { method: "POST", headers: { ...client(), host: "localhost:3000" } }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it("accepts a same-site request that arrives through a proxy", async () => {
-    const headers = { ...client(), origin: "https://planner.example", "x-forwarded-host": "planner.example", host: "10.0.0.5:8080" };
+    const headers = {
+      ...client(),
+      origin: "https://planner.example",
+      "x-forwarded-host": "planner.example",
+      host: "10.0.0.5:8080",
+    };
     expect((await route(async () => "ok")(post({ message: "hi" }, headers))).status).toBe(200);
   });
 

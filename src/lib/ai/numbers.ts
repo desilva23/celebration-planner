@@ -7,6 +7,7 @@ const UNIT_MULTIPLIER: Record<string, number> = {
   crore: 10_000_000,
 };
 
+// prettier-ignore
 const WORD_NUMBERS: Record<string, number> = {
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
   nine: 9, ten: 10, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, forty: 40, fifty: 50, hundred: 100,
@@ -34,10 +35,11 @@ export function parseCount(raw: string): number | null {
 export function numbersMentioned(text: string): Set<number> {
   const found = new Set<number>();
   for (const match of text.matchAll(new RegExp(AMOUNT, "gi"))) {
+    const digits = match[1]!; // AMOUNT always captures the digits; the unit is optional.
     // Null only when the digits overflow, in which case there is nothing to record.
-    const expanded = parseAmount(match[1], match[2]);
+    const expanded = parseAmount(digits, match[2]);
     if (expanded === null) continue;
-    const raw = Number(match[1].replace(/,/g, ""));
+    const raw = Number(digits.replace(/,/g, ""));
     found.add(Math.round(raw));
     found.add(Math.floor(raw));
     found.add(expanded);

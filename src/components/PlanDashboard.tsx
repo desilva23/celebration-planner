@@ -6,10 +6,14 @@ import { formatDate, formatInr } from "@/lib/domain/format";
 import type { PlanUpdate } from "@/lib/domain/plan";
 import type { Plan } from "@/lib/domain/schema";
 import { summariseBudget } from "@/lib/domain/budget";
+import { summarisePayments, type DuePayment } from "@/lib/domain/payments";
 import { nextActions } from "@/lib/domain/timeline";
 import { BudgetPanel } from "./BudgetPanel";
 import { ChangePanel } from "./ChangePanel";
 import { EffectsToast, type EffectsReport } from "./EffectsToast";
+import { GuestsPanel } from "./GuestsPanel";
+import { PlanSharing } from "./PlanSharing";
+import { RunSheetPanel } from "./RunSheetPanel";
 import { IdeasPanel } from "./IdeasPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { EVENT_TYPE_LABEL } from "./ui";
@@ -24,21 +28,33 @@ export interface PanelProps {
   onUpdate: (update: PlanUpdate, heading: string) => void;
 }
 
+interface UndoableReport extends EffectsReport {
+  /** The plan before and after the reported change. */
+  change?: { before: Plan; after: Plan };
+}
+
 export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan: Plan) => void }) {
   const today = todayIso();
-  const [report, setReport] = useState<EffectsReport | null>(null);
+  const [report, setReport] = useState<UndoableReport | null>(null);
 
   const onUpdate = (update: PlanUpdate, heading: string) => {
     onChange(update.plan);
-    setReport({ heading, items: update.effects });
+    setReport({ heading, items: update.effects, change: { before: plan, after: update.plan } });
   };
   const panel: PanelProps = { plan, today, onChange, onUpdate };
+
+  // Undo is offered only while the plan is still the one the change produced,
+  // so it can never silently throw away something done since.
+  const undo = report?.change?.after === plan ? { before: report.change.before, heading: report.heading } : null;
 
   const { brief } = plan;
   const summary = summariseBudget(plan.budget, brief);
   const daysLeft = daysBetween(today, brief.eventDate);
   const done = plan.tasks.filter((t) => t.status === "done").length;
   const upNext = nextActions(plan.tasks, 1)[0];
+  const payments = summarisePayments(plan.vendors, today);
+  const describe = ({ vendor, payment }: DuePayment) =>
+    `${formatInr(payment.amount)} to ${vendor} (${payment.label}, due ${formatDate(payment.dueDate)})`;
 
   return (
     <div className="dashboard">
@@ -71,28 +87,59 @@ export function PlanDashboard({ plan, onChange }: { plan: Plan; onChange: (plan:
             The plan is {formatInr(summary.overBy)} over budget. <a href="#budget">Choose a trade-off</a>.
           </p>
         )}
-        {upNext && (
-          <p className="next-up">
-            <strong>Next up:</strong> {upNext.title}, due {formatDate(upNext.dueDate)}. <a href="#timeline">See the timeline</a>
+        {payments.overdue.length > 0 && (
+          <p className="callout warning">
+            Overdue: {payments.overdue.map(describe).join("; ")}. <a href="#vendors">See vendors</a>
           </p>
         )}
+        {upNext && (
+          <p className="next-up">
+            <strong>Next up:</strong> {upNext.title}, due {formatDate(upNext.dueDate)}.{" "}
+            <a href="#timeline">See the timeline</a>
+          </p>
+        )}
+        {payments.next && (
+          <p className="next-up">
+            <strong>Next payment:</strong> {describe(payments.next)}.
+          </p>
+        )}
+        <PlanSharing plan={plan} />
       </section>
 
       <nav className="section-nav" aria-label="Plan sections">
         <a href="#change">What changed?</a>
         <a href="#budget">Budget</a>
         <a href="#timeline">Timeline</a>
+        <a href="#on-the-day">On the day</a>
         <a href="#vendors">Vendors</a>
+        <a href="#guests">Guests</a>
         <a href="#ideas">Ideas</a>
       </nav>
 
       <ChangePanel {...panel} />
       <BudgetPanel {...panel} />
       <TimelinePanel {...panel} />
+      <RunSheetPanel plan={plan} />
       <VendorPanel {...panel} />
+      <GuestsPanel {...panel} />
       <IdeasPanel plan={plan} />
 
-      <EffectsToast report={report} onDismiss={() => setReport(null)} />
+      <EffectsToast
+        report={report}
+        onDismiss={() => setReport(null)}
+        onUndo={
+          undo
+            ? () => {
+                onChange(undo.before);
+                setReport({
+                  heading: `Undone: ${undo.heading}`,
+                  items: [],
+                  summary: "Your plan is back to how it was.",
+                });
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

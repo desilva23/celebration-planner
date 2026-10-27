@@ -22,7 +22,8 @@ import { categoryLabel, ErrorMessage, Provenance, Section } from "./ui";
 function toChange(updates: InterpretResult["updates"], brief: EventBrief): PlanChange {
   const change: PlanChange = {};
   if (updates.guestCount !== null && updates.guestCount !== brief.guestCount) change.guestCount = updates.guestCount;
-  if (updates.totalBudget !== null && updates.totalBudget !== brief.totalBudget) change.totalBudget = updates.totalBudget;
+  if (updates.totalBudget !== null && updates.totalBudget !== brief.totalBudget)
+    change.totalBudget = updates.totalBudget;
   if (updates.eventDate !== null && updates.eventDate !== brief.eventDate) change.eventDate = updates.eventDate;
   if (updates.tier !== null && updates.tier !== brief.tier) change.tier = updates.tier;
   if (updates.priorities !== null && updates.priorities.join() !== brief.priorities.join()) {
@@ -145,7 +146,15 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
   );
 }
 
-function ManualEdit({ brief, today, onApply }: { brief: EventBrief; today: string; onApply: (c: PlanChange) => boolean }) {
+function ManualEdit({
+  brief,
+  today,
+  onApply,
+}: {
+  brief: EventBrief;
+  today: string;
+  onApply: (c: PlanChange) => boolean;
+}) {
   const [guestCount, setGuestCount] = useState(String(brief.guestCount));
   const [totalBudget, setTotalBudget] = useState(String(brief.totalBudget));
   const [eventDate, setEventDate] = useState(brief.eventDate);
@@ -165,22 +174,44 @@ function ManualEdit({ brief, today, onApply }: { brief: EventBrief; today: strin
     <form onSubmit={submit} className="grid two">
       <div className="field">
         <label htmlFor="edit-guests">Guests</label>
-        <input id="edit-guests" type="number" inputMode="numeric" min={1} max={MAX_GUESTS} value={guestCount} onChange={(e) => setGuestCount(e.target.value)} />
+        <input
+          id="edit-guests"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={MAX_GUESTS}
+          value={guestCount}
+          onChange={(e) => setGuestCount(e.target.value)}
+        />
       </div>
       <div className="field">
         <label htmlFor="edit-budget">Total budget (₹)</label>
-        <input id="edit-budget" type="number" inputMode="numeric" min={MIN_BUDGET} max={MAX_BUDGET} value={totalBudget} onChange={(e) => setTotalBudget(e.target.value)} />
+        <input
+          id="edit-budget"
+          type="number"
+          inputMode="numeric"
+          min={MIN_BUDGET}
+          max={MAX_BUDGET}
+          value={totalBudget}
+          onChange={(e) => setTotalBudget(e.target.value)}
+        />
       </div>
       <div className="field">
         <label htmlFor="edit-date">Event date</label>
-        <input id="edit-date" type="date" min={addDays(today, 1)} value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+        <input
+          id="edit-date"
+          type="date"
+          min={addDays(today, 1)}
+          value={eventDate}
+          onChange={(e) => setEventDate(e.target.value)}
+        />
       </div>
       <div className="field">
         <label htmlFor="edit-tier">Experience</label>
         <select id="edit-tier" value={tier} onChange={(e) => setTier(e.target.value as Tier)}>
           {TIERS.map((t) => (
             <option key={t} value={t}>
-              {t[0].toUpperCase() + t.slice(1)}
+              {t.charAt(0).toUpperCase() + t.slice(1)}
             </option>
           ))}
         </select>

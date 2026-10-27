@@ -6,7 +6,11 @@ import type { GeneratedIdea, Idea } from "./contracts";
  * are straightened out on the way.
  */
 export function totalIdeaCost(idea: GeneratedIdea): Idea {
-  const costBreakdown = idea.costBreakdown.map((c) => ({ ...c, min: Math.min(c.min, c.max), max: Math.max(c.min, c.max) }));
+  const costBreakdown = idea.costBreakdown.map((c) => ({
+    ...c,
+    min: Math.min(c.min, c.max),
+    max: Math.max(c.min, c.max),
+  }));
   return {
     ...idea,
     costBreakdown,

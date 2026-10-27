@@ -5,9 +5,8 @@ import type { EventBrief, Plan, Vendor } from "@/lib/domain/schema";
 
 /** Pins the clock to midday on `iso` in local time, so `todayIso()` is stable. */
 export function freezeToday(iso = TODAY): void {
-  const [y, m, d] = iso.split("-").map(Number);
   vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date(y, m - 1, d, 12));
+  vi.setSystemTime(new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)), 12));
 }
 
 export function weddingPlan(overrides: Partial<EventBrief> = {}): Plan {
@@ -23,6 +22,7 @@ export function vendor(overrides: Partial<Vendor> = {}): Vendor {
     quote: null,
     status: "considering",
     notes: "",
+    payments: [],
     ...overrides,
   };
 }

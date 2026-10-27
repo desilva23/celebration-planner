@@ -57,7 +57,9 @@ export async function groqComplete(request: Completion): Promise<string> {
   const data = (await response.json()) as GroqReply | null;
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string" || !content.trim()) {
-    throw new AiResponseError(`Groq returned no content (finish_reason: ${data?.choices?.[0]?.finish_reason ?? "unknown"})`);
+    throw new AiResponseError(
+      `Groq returned no content (finish_reason: ${data?.choices?.[0]?.finish_reason ?? "unknown"})`,
+    );
   }
   return content;
 }

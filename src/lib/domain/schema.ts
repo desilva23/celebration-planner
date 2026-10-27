@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../zod";
 
 export const EVENT_TYPES = ["wedding", "birthday", "anniversary", "community", "other"] as const;
 export const TIERS = ["simple", "standard", "premium"] as const;
@@ -63,6 +63,15 @@ export const TaskSchema = z.object({
   priority: z.enum(["high", "medium", "low"]),
 });
 
+/** Money owed to a vendor on a date, such as an advance or the balance. */
+export const PaymentSchema = z.object({
+  id: z.string().min(1).max(40),
+  label: z.string().trim().min(1).max(60),
+  amount: z.number().int().min(1).max(MAX_BUDGET),
+  dueDate: IsoDateSchema,
+  paid: z.boolean(),
+});
+
 export const VendorSchema = z.object({
   id: z.string().min(1).max(40),
   category: CategorySchema,
@@ -72,6 +81,16 @@ export const VendorSchema = z.object({
   quote: z.number().int().min(0).nullable(),
   status: z.enum(["considering", "quoted", "booked"]),
   notes: z.string().trim().max(500),
+  /** Added after plans were first saved, so older plans load with none. */
+  payments: z.array(PaymentSchema).max(20).default([]),
+});
+
+/** One invitation: a household or group, how many people it covers, and their reply. */
+export const GuestSchema = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().trim().min(1).max(80),
+  partySize: z.number().int().min(1).max(50),
+  rsvp: z.enum(["pending", "yes", "no"]),
 });
 
 export const PlanSchema = z.object({
@@ -80,6 +99,8 @@ export const PlanSchema = z.object({
   budget: z.array(BudgetLineSchema),
   tasks: z.array(TaskSchema),
   vendors: z.array(VendorSchema),
+  /** Added after plans were first saved, so older plans load with an empty list. */
+  guests: z.array(GuestSchema).max(2000).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -100,6 +121,9 @@ export type EventBrief = z.infer<typeof EventBriefSchema>;
 export type CostSource = z.infer<typeof CostSourceSchema>;
 export type BudgetLine = z.infer<typeof BudgetLineSchema>;
 export type Task = z.infer<typeof TaskSchema>;
+export type Payment = z.infer<typeof PaymentSchema>;
 export type Vendor = z.infer<typeof VendorSchema>;
+export type Guest = z.infer<typeof GuestSchema>;
+export type Rsvp = Guest["rsvp"];
 export type Plan = z.infer<typeof PlanSchema>;
 export type PlanChange = z.infer<typeof PlanChangeSchema>;

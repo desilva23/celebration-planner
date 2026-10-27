@@ -1,16 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import { z } from "../zod";
 import {
   CompareQuotesResultSchema,
   GeneratedIdeasSchema,
   IdeasResultSchema,
   InterpretResultSchema,
+  runSheetResultFor,
   VendorBriefResultSchema,
 } from "./contracts";
 import { fitToSchema, responseSchemas } from "./json-schema";
 
-type Described = Record<string, { description?: string; anyOf?: { description?: string }[] }>;
-const props = (node: Record<string, unknown>) => node.properties as Described;
+interface Prop {
+  description?: string;
+  anyOf?: { description?: string }[];
+  properties?: Record<string, Prop>;
+}
+
+/** One property of an object schema; fails the test if it is missing. */
+function prop(node: { properties?: unknown }, name: string): Prop {
+  const found = (node.properties as Record<string, Prop> | undefined)?.[name];
+  if (!found) throw new Error(`No property "${name}" in the schema`);
+  return found;
+}
 
 const LIMIT_KEYS = ["maxLength", "minLength", "pattern", "format", "maxItems", "minItems", "minimum", "maximum"];
 
@@ -31,6 +42,7 @@ describe("responseSchemas", () => {
     ["ideas", GeneratedIdeasSchema],
     ["vendor brief", VendorBriefResultSchema],
     ["quotes", CompareQuotesResultSchema],
+    ["run sheet", runSheetResultFor(["Lotus Hall"])],
   ])("sends a portable %s schema that strict mode accepts", (_, schema) => {
     const { portable } = responseSchemas(schema);
     const keys = keysIn(portable);
@@ -52,29 +64,40 @@ describe("responseSchemas", () => {
 
   it("keeps the limits as hints the model can read", () => {
     const { portable } = responseSchemas(InterpretResultSchema);
-    const understood = (portable.properties as Record<string, { description?: string }>).understood;
-    expect(understood.description).toMatch(/at most 300 characters/);
+    expect(prop(portable, "understood").description).toMatch(/at most 300 characters/);
   });
 
   it("turns dates, item counts and numeric bounds into hints", () => {
-    const updates = props(responseSchemas(InterpretResultSchema).portable).updates as unknown as Record<string, unknown>;
-    expect(props(updates).eventDate.anyOf![0].description).toBe("a date as YYYY-MM-DD");
-    expect(props(updates).guestCount.anyOf![0].description).toBe("minimum 1; maximum 5000");
-    expect(props(responseSchemas(GeneratedIdeasSchema).portable).ideas.description).toBe("at least 1 items; at most 4 items");
+    const updates = prop(responseSchemas(InterpretResultSchema).portable, "updates");
+    expect(prop(updates, "eventDate").anyOf?.[0]?.description).toBe("a date as YYYY-MM-DD");
+    expect(prop(updates, "guestCount").anyOf?.[0]?.description).toBe("minimum 1; maximum 5000");
+    expect(prop(responseSchemas(GeneratedIdeasSchema).portable, "ideas").description).toBe(
+      "at least 1 items; at most 4 items",
+    );
   });
 
   it("adds hints after an existing description, and skips Zod's default integer bounds", () => {
-    const { portable } = responseSchemas(z.object({ total: z.string().max(5).describe("The total"), count: z.number().int() }));
-    expect(props(portable).total.description).toBe("The total; at most 5 characters");
-    expect(props(portable).count.description).toBeUndefined();
+    const { portable } = responseSchemas(
+      z.object({ total: z.string().max(5).describe("The total"), count: z.number().int() }),
+    );
+    expect(prop(portable, "total").description).toBe("The total; at most 5 characters");
+    expect(prop(portable, "count").description).toBeUndefined();
+  });
+
+  it("explains a time format the model can't be sent as a pattern", () => {
+    const { portable } = responseSchemas(runSheetResultFor([]));
+    expect(JSON.stringify(portable)).toContain('"description":"24-hour time as HH:MM"');
+    expect(JSON.stringify(portable)).not.toContain("pattern");
   });
 
   // Regression: field names under `properties` used to be stripped like keywords.
   it("keeps fields whose names look like schema keywords", () => {
-    const { portable } = responseSchemas(z.object({ format: z.string(), pattern: z.string().max(10), minimum: z.number() }));
-    expect(Object.keys(props(portable))).toEqual(["format", "pattern", "minimum"]);
+    const { portable } = responseSchemas(
+      z.object({ format: z.string(), pattern: z.string().max(10), minimum: z.number() }),
+    );
+    expect(Object.keys(portable.properties as object)).toEqual(["format", "pattern", "minimum"]);
     expect(portable.required).toEqual(["format", "pattern", "minimum"]);
-    expect(props(portable).pattern.description).toBe("at most 10 characters");
+    expect(prop(portable, "pattern").description).toBe("at most 10 characters");
   });
 });
 
@@ -83,15 +106,20 @@ describe("fitToSchema", () => {
 
   it("trims over-long replies so they validate", () => {
     const idea = {
-      title: "T".repeat(200), summary: "s", whyItFits: "w", details: Array(10).fill("d"),
-      category: "decor", costBreakdown: [{ item: "Flowers", min: 1000.4, max: 2000.6 }], assumptions: [],
+      title: "T".repeat(200),
+      summary: "s",
+      whyItFits: "w",
+      details: Array(10).fill("d"),
+      category: "decor",
+      costBreakdown: [{ item: "Flowers", min: 1000.4, max: 2000.6 }],
+      assumptions: [],
     };
     const fitted = fitToSchema({ ideas: [idea, idea, idea, idea, idea], followUpQuestion: null }, full);
     const parsed = GeneratedIdeasSchema.parse(fitted);
     expect(parsed.ideas).toHaveLength(4);
-    expect(parsed.ideas[0].title.length).toBeLessThanOrEqual(80);
-    expect(parsed.ideas[0].details).toHaveLength(6);
-    expect(parsed.ideas[0].costBreakdown[0]).toMatchObject({ min: 1000, max: 2001 });
+    expect(parsed.ideas[0]!.title.length).toBeLessThanOrEqual(80);
+    expect(parsed.ideas[0]!.details).toHaveLength(6);
+    expect(parsed.ideas[0]!.costBreakdown[0]).toMatchObject({ min: 1000, max: 2001 });
   });
 
   it("leaves genuinely wrong replies for validation to reject", () => {
@@ -114,7 +142,9 @@ describe("fitToSchema", () => {
   });
 
   it("passes through fields the schema doesn't describe, and values of the wrong shape", () => {
-    expect(fitToSchema({ known: 1.6, extra: 2.4 }, { type: "object", properties: { known: { type: "integer" } } })).toEqual({
+    expect(
+      fitToSchema({ known: 1.6, extra: 2.4 }, { type: "object", properties: { known: { type: "integer" } } }),
+    ).toEqual({
       known: 2,
       extra: 2.4,
     });

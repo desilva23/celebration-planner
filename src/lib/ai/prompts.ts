@@ -1,6 +1,12 @@
 import { CATEGORY_META } from "../domain/assumptions";
 import { formatInr } from "../domain/format";
-import type { CompareQuotesRequest, IdeasRequest, InterpretRequest, VendorBriefRequest } from "./contracts";
+import type {
+  CompareQuotesRequest,
+  IdeasRequest,
+  InterpretRequest,
+  RunSheetRequest,
+  VendorBriefRequest,
+} from "./contracts";
 
 const SHARED_RULES = `You are the planning assistant inside a celebration and event planner for users in India. All money is in Indian rupees, written as plain integers.
 
@@ -102,4 +108,22 @@ export function compareQuotesPrompt({ category, guestCount, budgetForCategory, q
     `Vendor type: ${CATEGORY_META[category].label}. The user expects ${guestCount} guests and has planned ${formatInr(budgetForCategory)} for it.`,
     ...quotes.map((q) => `Quote labelled "${q.label.replace(/["<>]/g, "")}":\n${userInput(q.text)}`),
   ].join("\n\n");
+}
+
+export const RUN_SHEET_SYSTEM = `${SHARED_RULES}
+
+Task: draft a run sheet for the day of the event: what happens when, and who looks after each step.
+- Guests arrive at the start time given. Include setup before it (venue access, decor, catering, sound check) and the wind-down after (send-off, pack-up, settling balances due on the day).
+- Fit the occasion and what the user said: ceremonies and customs, children or elderly guests, dietary needs, accessibility.
+- List steps in the order they happen, with 24-hour HH:MM times.
+- who must be one of the values the schema allows: a booked vendor's name, or a role (Hosts, Family, Venue staff, Everyone). Never name anyone else.
+- reminders: up to six practical checks for the day, such as payments due, an emergency kit, or a list of vendor phone numbers.`;
+
+export function runSheetPrompt({ brief, startTime, vendors }: RunSheetRequest): string {
+  const booked = vendors.length
+    ? userInput(vendors.map((v) => `- ${CATEGORY_META[v.category].label}: ${v.name}`).join("\n"))
+    : "None booked yet; use the roles.";
+  return [`Event brief:\n${describeBrief(brief)}`, `Guests arrive at ${startTime}.`, `Booked vendors:\n${booked}`].join(
+    "\n\n",
+  );
 }

@@ -3,6 +3,7 @@ import {
   CompareQuotesResultSchema,
   GeneratedIdeasSchema,
   InterpretResultSchema,
+  runSheetResultFor,
   VendorBriefResultSchema,
   type CompareQuotesRequest,
   type CompareQuotesResult,
@@ -10,6 +11,8 @@ import {
   type IdeasResult,
   type InterpretRequest,
   type InterpretResult,
+  type RunSheetRequest,
+  type RunSheetResult,
   type VendorBriefRequest,
   type VendorBriefResult,
 } from "./contracts";
@@ -23,6 +26,8 @@ import {
   ideasPrompt,
   INTERPRET_SYSTEM,
   interpretPrompt,
+  RUN_SHEET_SYSTEM,
+  runSheetPrompt,
   vendorBriefPrompt,
   vendorBriefSystem,
 } from "./prompts";
@@ -84,10 +89,28 @@ export async function compareQuotes(request: CompareQuotesRequest): Promise<Comp
       return summary
         ? verifyQuoteFigures({ ...summary, label: quote.label }, quote.text)
         : {
-            label: quote.label, total: null, perGuest: null, guestsCovered: null,
-            inclusions: [], extraCharges: [], terms: [],
+            label: quote.label,
+            total: null,
+            perGuest: null,
+            guestsCovered: null,
+            inclusions: [],
+            extraCharges: [],
+            terms: [],
             needsClarification: ["This quote couldn't be read. Check the text and try again."],
           };
     }),
   };
+}
+
+/** The day's timetable. Steps can only be assigned to booked vendors or generic roles. */
+export function draftRunSheet(request: RunSheetRequest): Promise<RunSheetResult> {
+  return generateStructured({
+    name: "run_sheet_result",
+    schema: runSheetResultFor(request.vendors.map((v) => v.name)),
+    system: RUN_SHEET_SYSTEM,
+    prompt: runSheetPrompt(request),
+    model: "smart",
+    temperature: 0.5,
+    timeoutMs: 30_000,
+  });
 }

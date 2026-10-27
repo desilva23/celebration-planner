@@ -9,8 +9,15 @@ import { freezeToday } from "@/test/plan";
 import { IntakeForm } from "./IntakeForm";
 
 const NO_UPDATES: InterpretResult["updates"] = {
-  eventType: null, title: null, eventDate: null, guestCount: null, totalBudget: null,
-  tier: null, city: null, priorities: null, notes: null,
+  eventType: null,
+  title: null,
+  eventDate: null,
+  guestCount: null,
+  totalBudget: null,
+  tier: null,
+  city: null,
+  priorities: null,
+  notes: null,
 };
 
 function setup() {
@@ -44,7 +51,7 @@ describe("IntakeForm", () => {
     await submit();
 
     expect(onCreate).toHaveBeenCalledOnce();
-    expect(onCreate.mock.calls[0][0].brief).toEqual({
+    expect(onCreate.mock.calls[0]![0].brief).toEqual({
       eventType: "birthday",
       title: "Birthday plan",
       eventDate: "2027-01-15",
@@ -62,7 +69,7 @@ describe("IntakeForm", () => {
     await user.type(field("Name for this plan"), "Anu & Ravi");
     await fillRequired();
     await submit();
-    expect(onCreate.mock.calls[0][0].brief.title).toBe("Anu & Ravi");
+    expect(onCreate.mock.calls[0]![0].brief.title).toBe("Anu & Ravi");
   });
 
   it("lists every problem in a focused summary that links to each field", async () => {
@@ -73,9 +80,15 @@ describe("IntakeForm", () => {
     expect(summary).toHaveTextContent("Please fix these first:");
     await waitFor(() => expect(summary).toHaveFocus());
     const links = within(summary).getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#field-eventDate", "#field-guestCount", "#field-totalBudget"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual([
+      "#field-eventDate",
+      "#field-guestCount",
+      "#field-totalBudget",
+    ]);
     expect(field("Expected guests")).toHaveAttribute("aria-invalid", "true");
-    expect(field("Expected guests")).toHaveAccessibleDescription("Enter how many guests you expect, between 1 and 5,000.");
+    expect(field("Expected guests")).toHaveAccessibleDescription(
+      "Enter how many guests you expect, between 1 and 5,000.",
+    );
     expect(onCreate).not.toHaveBeenCalled();
     expect(await axeViolations(container)).toEqual([]);
   });
@@ -136,8 +149,15 @@ describe("IntakeForm", () => {
         notice: "AI isn't configured on this server, so this is a built-in suggestion.",
         data: {
           updates: {
-            eventType: "anniversary", title: "Parents' 30th", eventDate: "2027-02-14", guestCount: 80, totalBudget: 300_000,
-            tier: "simple", city: "Coimbatore", priorities: ["catering"], notes: "Vegetarian food",
+            eventType: "anniversary",
+            title: "Parents' 30th",
+            eventDate: "2027-02-14",
+            guestCount: 80,
+            totalBudget: 300_000,
+            tier: "simple",
+            city: "Coimbatore",
+            priorities: ["catering"],
+            notes: "Vegetarian food",
           },
           understood: "Understood: an anniversary, 80 guests.",
           clarifyingQuestion: "Will most guests be elderly?",
@@ -148,10 +168,14 @@ describe("IntakeForm", () => {
       await user.type(describeBox, "My parents' 30th anniversary");
       await user.click(screen.getByRole("button", { name: "Fill in the details below" }));
 
-      expect(await screen.findByText(/Understood: an anniversary, 80 guests\. Check the details below/)).toBeInTheDocument();
+      expect(
+        await screen.findByText(/Understood: an anniversary, 80 guests\. Check the details below/),
+      ).toBeInTheDocument();
       expect(screen.getByText("Built-in suggestion")).toBeInTheDocument();
       expect(screen.getByText("Will most guests be elderly?")).toBeInTheDocument();
-      expect(api.sent()).toEqual([{ url: "/api/interpret", body: { message: "My parents' 30th anniversary", brief: null, today: "2026-10-25" } }]);
+      expect(api.sent()).toEqual([
+        { url: "/api/interpret", body: { message: "My parents' 30th anniversary", brief: null, today: "2026-10-25" } },
+      ]);
       expect(field("Occasion")).toHaveValue("anniversary");
       expect(field("Name for this plan")).toHaveValue("Parents' 30th");
       expect(field("Event date")).toHaveValue("2027-02-14");
@@ -164,7 +188,10 @@ describe("IntakeForm", () => {
     });
 
     it("keeps what the user already entered for anything it didn't pick up", async () => {
-      stubFetch().reply({ source: "ai", data: { updates: NO_UPDATES, understood: "Nothing specific.", clarifyingQuestion: null } });
+      stubFetch().reply({
+        source: "ai",
+        data: { updates: NO_UPDATES, understood: "Nothing specific.", clarifyingQuestion: null },
+      });
       const { user, field } = setup();
       await user.type(field("Expected guests"), "120");
       await user.type(screen.getByLabelText("What are you planning?"), "something nice");
@@ -190,13 +217,19 @@ describe("IntakeForm", () => {
       await screen.findByText(/Five priorities\./);
       await fillRequired();
       await submit();
-      expect(within(screen.getByRole("alert")).getByRole("link", { name: /expected array to have <=4 items/i })).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("alert")).getByRole("link", { name: /expected array to have <=4 items/i }),
+      ).toBeInTheDocument();
     });
 
     it("flags filled-in notes that are over the limit, against the notes field", async () => {
       stubFetch().reply({
         source: "ai",
-        data: { updates: { ...NO_UPDATES, notes: "n".repeat(1001) }, understood: "Long notes.", clarifyingQuestion: null },
+        data: {
+          updates: { ...NO_UPDATES, notes: "n".repeat(1001) },
+          understood: "Long notes.",
+          clarifyingQuestion: null,
+        },
       });
       const { user, field, fillRequired, submit } = setup();
       expect(field(/Anything else/)).toHaveAccessibleDescription(/^Guest ages, cultural/);

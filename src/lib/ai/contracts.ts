@@ -2,7 +2,7 @@
 // incoming requests, describe the JSON the model must return, and re-check
 // what it actually returned.
 
-import { z } from "zod";
+import { z } from "../zod";
 import {
   BudgetLineSchema,
   CategorySchema,
@@ -60,7 +60,10 @@ export const GeneratedIdeaSchema = z.object({
   details: z.array(z.string().max(160)).max(6),
   /** The budget line this idea mostly draws on. */
   category: CategorySchema,
-  costBreakdown: z.array(CostRangeSchema.extend({ item: z.string().max(80) })).min(1).max(6),
+  costBreakdown: z
+    .array(CostRangeSchema.extend({ item: z.string().max(80) }))
+    .min(1)
+    .max(6),
   assumptions: z.array(z.string().max(160)).max(4),
 });
 
@@ -125,6 +128,51 @@ export const CompareQuotesResultSchema = z.object({
   quotes: z.array(QuoteSummarySchema).max(4),
 });
 
+// --- Run sheet: the day itself, step by step, with who looks after each ----
+
+const TimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use a 24-hour time like 18:30")
+  .describe("24-hour time as HH:MM");
+
+/** Who a step can be assigned to besides the booked vendors. Nobody else can be named. */
+export const RUN_SHEET_ROLES = ["Hosts", "Family", "Venue staff", "Everyone"] as const;
+
+export const RunSheetRequestSchema = z.object({
+  brief: EventBriefSchema,
+  /** When guests are expected. */
+  startTime: TimeSchema,
+  /** Booked vendors, so steps can say who does them. */
+  vendors: z.array(z.object({ category: CategorySchema, name: z.string().trim().min(1).max(80) })).max(20),
+});
+
+const RunSheetItemSchema = z.object({
+  time: TimeSchema,
+  title: z.string().max(80),
+  details: z.string().max(200),
+  who: z.string().max(80),
+});
+
+export const RunSheetResultSchema = z.object({
+  items: z.array(RunSheetItemSchema).min(3).max(30),
+  reminders: z.array(z.string().max(160)).max(6),
+});
+
+/**
+ * The result schema for a request, with "who" limited to its booked vendors
+ * and the generic roles. Providers decode against it, so the model can't
+ * name anyone else, and the reply is validated against it again.
+ */
+export function runSheetResultFor(vendorNames: string[]) {
+  const people = [...new Set([...RUN_SHEET_ROLES, ...vendorNames])] as [string, ...string[]];
+  return RunSheetResultSchema.extend({
+    items: z
+      .array(RunSheetItemSchema.extend({ who: z.enum(people) }))
+      .min(3)
+      .max(30),
+  });
+}
+
 export type InterpretRequest = z.infer<typeof InterpretRequestSchema>;
 export type InterpretResult = z.infer<typeof InterpretResultSchema>;
 export type GeneratedIdea = z.infer<typeof GeneratedIdeaSchema>;
@@ -136,3 +184,6 @@ export type VendorBriefResult = z.infer<typeof VendorBriefResultSchema>;
 export type CompareQuotesRequest = z.infer<typeof CompareQuotesRequestSchema>;
 export type QuoteSummary = z.infer<typeof QuoteSummarySchema>;
 export type CompareQuotesResult = z.infer<typeof CompareQuotesResultSchema>;
+export type RunSheetRequest = z.infer<typeof RunSheetRequestSchema>;
+export type RunSheetResult = z.infer<typeof RunSheetResultSchema>;
+export type RunSheetRole = (typeof RUN_SHEET_ROLES)[number];

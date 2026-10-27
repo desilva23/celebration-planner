@@ -135,8 +135,8 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
     <div className="intake">
       <h1>Plan a celebration that survives real life</h1>
       <p className="lede">
-        Tell us the occasion, budget, guests and date. You get a budget split, a schedule in the right order and a vendor
-        checklist, and when something changes the plan adapts instead of starting over.
+        Tell us the occasion, budget, guests and date. You get a budget split, a schedule in the right order and a
+        vendor checklist, and when something changes the plan adapts instead of starting over.
       </p>
 
       <section className="card" aria-labelledby="describe-heading">
@@ -270,7 +270,9 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
               aria-describedby={errors.totalBudget ? "field-totalBudget-error" : "budget-readout"}
             />
             <p className="hint" id="budget-readout">
-              {Number(form.totalBudget) > 0 ? formatInr(Number(form.totalBudget)) : "In rupees, e.g. 800000 for ₹8 lakh"}
+              {Number(form.totalBudget) > 0
+                ? formatInr(Number(form.totalBudget))
+                : "In rupees, e.g. 800000 for ₹8 lakh"}
             </p>
             {fieldError("totalBudget")}
           </div>
@@ -323,7 +325,8 @@ export function IntakeForm({ onCreate }: { onCreate: (plan: Plan) => void }) {
         <div className="field">
           <label htmlFor="field-notes">Anything else we should plan around? (optional)</label>
           <p className="hint" id="notes-hint">
-            Guest ages, cultural or religious customs, dietary needs, accessibility, venue limits, the atmosphere you want.
+            Guest ages, cultural or religious customs, dietary needs, accessibility, venue limits, the atmosphere you
+            want.
           </p>
           <textarea
             {...fieldProps("notes")}

@@ -171,8 +171,14 @@ function raiseBudget(plan: Plan, gap: number): TradeoffOption {
     title: "Keep the plan and raise the budget",
     impacts: feasible
       ? [`Budget goes from ${formatInr(plan.brief.totalBudget)} to ${formatInr(planned)} (+${formatInr(gap)})`]
-      : [`The plan costs ${formatInr(planned)}, more than the largest budget the planner handles (${formatInr(MAX_BUDGET)})`],
+      : [
+          `The plan costs ${formatInr(planned)}, more than the largest budget the planner handles (${formatInr(MAX_BUDGET)})`,
+        ],
     feasible,
-    result: { budget: plan.budget, guestCount: plan.brief.guestCount, totalBudget: feasible ? planned : plan.brief.totalBudget },
+    result: {
+      budget: plan.budget,
+      guestCount: plan.brief.guestCount,
+      totalBudget: feasible ? planned : plan.brief.totalBudget,
+    },
   };
 }

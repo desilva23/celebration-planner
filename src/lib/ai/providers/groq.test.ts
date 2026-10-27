@@ -19,7 +19,7 @@ const completion = (overrides: Partial<Completion> = {}): Completion => ({
 const reply = (content: unknown, finishReason = "stop") =>
   Response.json({ choices: [{ message: { content }, finish_reason: finishReason }] });
 
-const sent = (call = 0) => JSON.parse(fetchMock.mock.calls[call][1]?.body as string);
+const sent = (call = 0) => JSON.parse(fetchMock.mock.calls[call]![1]?.body as string);
 
 describe("groqComplete", () => {
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe("groqComplete", () => {
   it("sends the prompt as chat messages with a strict schema and the abort signal", async () => {
     const request = completion();
     await expect(groqComplete(request)).resolves.toBe("{}");
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     expect(init?.signal).toBe(request.signal);
     expect(sent()).toEqual({
       model: "openai/gpt-oss-20b",
@@ -46,7 +46,10 @@ describe("groqComplete", () => {
       max_completion_tokens: 4096,
       reasoning_effort: "low",
       include_reasoning: false,
-      response_format: { type: "json_schema", json_schema: { name: "test_result", schema: { type: "object" }, strict: true } },
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "test_result", schema: { type: "object" }, strict: true },
+      },
     });
   });
 
@@ -60,7 +63,10 @@ describe("groqComplete", () => {
     vi.stubEnv("GROQ_LITE_MODEL", "llama-3.1-8b-instant");
     await groqComplete(completion({ tier: "smart" }));
     await groqComplete(completion({ tier: "lite" }));
-    for (const [call, model] of [[0, "llama-3.3-70b-versatile"], [1, "llama-3.1-8b-instant"]] as const) {
+    for (const [call, model] of [
+      [0, "llama-3.3-70b-versatile"],
+      [1, "llama-3.1-8b-instant"],
+    ] as const) {
       expect(sent(call).model).toBe(model);
       expect(sent(call)).not.toHaveProperty("reasoning_effort");
       expect(sent(call).response_format.json_schema.strict).toBe(false);

@@ -36,5 +36,20 @@ describe("EffectsToast", () => {
   it("says so when nothing else needed to move", () => {
     render(<EffectsToast report={{ heading: "Schedule updated", items: [] }} onDismiss={vi.fn()} />);
     expect(screen.getByText("Nothing else needed to move.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+  });
+
+  it("offers undo when the change can still be undone, and shows a summary in place of the list", async () => {
+    const onUndo = vi.fn();
+    render(
+      <EffectsToast
+        report={{ heading: "Undone: Plan revised", items: [], summary: "Your plan is back to how it was." }}
+        onDismiss={vi.fn()}
+        onUndo={onUndo}
+      />,
+    );
+    expect(screen.getByText("Your plan is back to how it was.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(onUndo).toHaveBeenCalledOnce();
   });
 });

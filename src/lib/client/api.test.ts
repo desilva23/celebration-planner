@@ -38,9 +38,16 @@ describe("useAiCall", () => {
 
   it.each([
     ["has no JSON body", () => new Response("upstream down", { status: 502 }), "Request failed (502)."],
-    ["has an error that isn't text", () => Response.json({ error: { code: 1 } }, { status: 500 }), "Request failed (500)."],
+    [
+      "has an error that isn't text",
+      () => Response.json({ error: { code: 1 } }, { status: 500 }),
+      "Request failed (500).",
+    ],
   ])("falls back to the status when the error response %s", async (_, response, message) => {
-    vi.stubGlobal("fetch", vi.fn(async () => response()));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response()),
+    );
     const { result } = renderHook(() => useAiCall("/api/ideas"));
     await act(async () => {
       await result.current.run({});
@@ -65,7 +72,10 @@ describe("useAiCall", () => {
         throw "not an Error";
       },
     };
-    vi.stubGlobal("fetch", vi.fn(async () => odd));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => odd),
+    );
     const { result } = renderHook(() => useAiCall("/api/ideas"));
     await act(async () => {
       await result.current.run({});
@@ -95,7 +105,10 @@ describe("useAiCall", () => {
 
   it("reports a failure that lands after a reset, without bringing back old results", async () => {
     let fail = () => {};
-    vi.stubGlobal("fetch", vi.fn(() => new Promise((_, reject) => (fail = () => reject(new TypeError("offline"))))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise((_, reject) => (fail = () => reject(new TypeError("offline"))))),
+    );
     const { result } = renderHook(() => useAiCall("/api/ideas"));
     let request: Promise<unknown> = Promise.resolve();
     act(() => {
@@ -106,7 +119,10 @@ describe("useAiCall", () => {
       fail();
       await request;
     });
-    expect(result.current).toMatchObject({ error: "Couldn't reach the server. Check your connection and try again.", envelope: undefined });
+    expect(result.current).toMatchObject({
+      error: "Couldn't reach the server. Check your connection and try again.",
+      envelope: undefined,
+    });
   });
 
   it("can be reset to its idle state", async () => {

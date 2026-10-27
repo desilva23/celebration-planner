@@ -59,7 +59,13 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Noto Sans",
+    sans-serif;
   font-size: 1rem;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -792,9 +798,21 @@ td ul {
   pointer-events: none;
 }
 
+/* While a report is showing, controls must not end up behind it (WCAG 2.4.11):
+   keyboard focus and scrolling stop above it, and the page gets room at the
+   end so its last controls can scroll clear. Covers the report's tallest size. */
+html:has(.toast) {
+  --toast-room: calc(40vh + 2rem);
+  scroll-padding-bottom: var(--toast-room);
+}
+
+html:has(.toast) body {
+  padding-bottom: var(--toast-room);
+}
+
 .toast {
   width: min(100%, 26rem);
-  max-height: 50vh;
+  max-height: 40vh;
   overflow-y: auto;
   padding: 1rem;
   border-radius: var(--radius);
@@ -811,6 +829,12 @@ td ul {
   gap: 0.5rem;
 }
 
+.toast-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .toast h2 {
   font-size: 1rem;
   margin: 0;
@@ -825,4 +849,33 @@ td ul {
   html {
     scroll-behavior: auto;
   }
+}
+
+/* Vendor payments */
+
+.payments {
+  flex-basis: 100%;
+}
+
+.payments h4 {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+.payment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0;
+}
+
+.payment-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.payment-form .callout {
+  flex-basis: 100%;
 }

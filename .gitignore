@@ -8,3 +8,9 @@ coverage/
 .env*.local
 .DS_Store
 npm-debug.log*
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/.stryker-tmp/
+/reports/

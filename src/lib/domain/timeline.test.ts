@@ -31,7 +31,11 @@ const task = (id: string, overrides: Partial<Task> = {}): Task => ({
 describe("planningWindow", () => {
   it("uses the ideal horizon when there is time, and flags a squeeze when there isn't", () => {
     expect(planningWindow("wedding", EVENT, TODAY)).toEqual({ days: 120, idealDays: 120, compressed: false });
-    expect(planningWindow("birthday", addDays(TODAY, 10), TODAY)).toEqual({ days: 10, idealDays: 30, compressed: true });
+    expect(planningWindow("birthday", addDays(TODAY, 10), TODAY)).toEqual({
+      days: 10,
+      idealDays: 30,
+      compressed: true,
+    });
   });
 
   it("still gives a one-day window once the event date has passed", () => {
@@ -180,7 +184,11 @@ describe("nextActions", () => {
   });
 
   it("puts the soonest first, breaks ties by priority, and stops at the limit", () => {
-    const list = [task("low", { priority: "low" }), task("high", { priority: "high" }), task("soon", { dueDate: "2026-12-01" })];
+    const list = [
+      task("low", { priority: "low" }),
+      task("high", { priority: "high" }),
+      task("soon", { dueDate: "2026-12-01" }),
+    ];
     expect(nextActions(list).map((t) => t.id)).toEqual(["soon", "high", "low"]);
     expect(nextActions(list, 1).map((t) => t.id)).toEqual(["soon"]);
   });
@@ -189,6 +197,6 @@ describe("nextActions", () => {
 describe("blockedBy", () => {
   it("lists only the prerequisites that are still open", () => {
     const list = [task("a"), task("b", { status: "done" }), task("c", { dependsOn: ["a", "b", "gone"] })];
-    expect(blockedBy(list[2], list).map((t) => t.id)).toEqual(["a"]);
+    expect(blockedBy(list[2]!, list).map((t) => t.id)).toEqual(["a"]);
   });
 });

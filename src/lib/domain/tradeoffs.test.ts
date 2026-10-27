@@ -16,7 +16,16 @@ const amountOf = (plan: Plan, category: CategoryId) => plan.budget.find((l) => l
 /** Books a vendor for `category` at `quote`, making that line a confirmed price. */
 function booked(plan: Plan, category: CategoryId, quote: number): Plan {
   const id = `v-${category}`;
-  const withVendor = upsertVendor(plan, { id, category, name: "Vendor", contact: "", quote, status: "quoted", notes: "" });
+  const withVendor = upsertVendor(plan, {
+    id,
+    category,
+    name: "Vendor",
+    contact: "",
+    quote,
+    status: "quoted",
+    notes: "",
+    payments: [],
+  });
   return bookVendor(withVendor, id).plan;
 }
 
@@ -77,7 +86,10 @@ describe("tradeoffOptions", () => {
     const plan = setBudgetAmount(fitting, "venue", amountOf(fitting, "venue") + 10_000);
     const o = optionsFor(plan).get("use-contingency")!;
     expect(o.feasible).toBe(true);
-    expect(o.impacts).toEqual(["Contingency drops from ₹40,000 to ₹30,000", "Less cushion for surprises close to the day"]);
+    expect(o.impacts).toEqual([
+      "Contingency drops from ₹40,000 to ₹30,000",
+      "Less cushion for surprises close to the day",
+    ]);
     expect(plannedTotal(o.result.budget)).toBe(plan.brief.totalBudget);
   });
 
