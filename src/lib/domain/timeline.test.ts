@@ -52,6 +52,33 @@ describe("buildTimeline", () => {
   const tasks = buildTimeline({ eventType: "wedding", eventDate: EVENT, today: TODAY, categories: ALL });
   const byId = new Map(tasks.map((t) => [t.id, t]));
 
+  it("orders the tasks by what each one needs done first", () => {
+    expect(Object.fromEntries(tasks.map((t) => [t.id, t.dependsOn]))).toEqual({
+      budget: [],
+      "guests-draft": ["budget"],
+      venue: ["guests-draft"],
+      caterer: ["venue"],
+      photographer: ["venue"],
+      decor: ["venue"],
+      entertainment: ["venue"],
+      "guests-final": ["guests-draft"],
+      invitations: ["venue", "guests-final"],
+      attire: [],
+      menu: ["caterer", "guests-final"],
+      transport: ["venue", "guests-final"],
+      confirm: ["caterer", "photographer", "decor"],
+      "run-sheet": ["confirm"],
+    });
+  });
+
+  it("drops dependencies on tasks the plan doesn't have", () => {
+    const withoutVenue = new Set(CATEGORIES.filter((c) => c !== "venue"));
+    const plan = buildTimeline({ eventType: "wedding", eventDate: EVENT, today: TODAY, categories: withoutVenue });
+    const deps = new Map(plan.map((t) => [t.id, t.dependsOn]));
+    expect(deps.has("venue")).toBe(false);
+    expect([deps.get("caterer"), deps.get("invitations")]).toEqual([[], ["guests-final"]]);
+  });
+
   it("starts every task after its prerequisites are due", () => {
     for (const task of tasks) {
       for (const dep of task.dependsOn) {

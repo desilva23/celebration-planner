@@ -186,6 +186,24 @@ describe("aiRoute", () => {
     expect(await res.json()).toEqual({ error });
   });
 
+  it("reuses an AI answer for ten minutes, then asks again", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-25T10:00:00Z") });
+    try {
+      const run = vi.fn(async ({ message }: { message: string }) => message);
+      const ask = route(run);
+      const send = () => ask(post({ message: "hi" }, client()));
+      await send();
+      vi.setSystemTime(new Date("2026-10-25T10:09:59Z"));
+      await send();
+      expect(run).toHaveBeenCalledTimes(1);
+      vi.setSystemTime(new Date("2026-10-25T10:10:00Z"));
+      await send();
+      expect(run).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("limits each client to 20 requests a minute and says when to retry", async () => {
     const handler = route(async ({ message }) => message);
     const headers = client();

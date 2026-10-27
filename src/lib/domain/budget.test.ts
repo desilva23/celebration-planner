@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allocateBudget, plannedTotal, scaleForGuests, setLineAmount, summariseBudget } from "./budget";
+import { CATERING_PER_GUEST } from "./assumptions";
 import { weddingBrief } from "./fixtures.test-helpers";
 
 describe("allocateBudget", () => {
@@ -49,6 +50,17 @@ describe("setLineAmount", () => {
 });
 
 describe("summariseBudget", () => {
+  it("calls catering thin only below three-quarters of the usual cost per guest", () => {
+    const brief = weddingBrief({ guestCount: 100 }); // a standard event: ₹800 a guest, so the line is ₹600
+    const threshold = CATERING_PER_GUEST.standard * 0.75;
+    const thin = (perGuest: number) =>
+      summariseBudget(
+        [{ category: "catering", amount: perGuest * 100, scalesWithGuests: true, source: "estimate" }],
+        brief,
+      ).cateringLooksThin;
+    expect([thin(threshold), thin(threshold - 1)]).toEqual([false, true]);
+  });
+
   it("reports how far over budget the plan is", () => {
     const lines = scaleForGuests(allocateBudget(weddingBrief()), 200, 250);
     const summary = summariseBudget(lines, weddingBrief());
