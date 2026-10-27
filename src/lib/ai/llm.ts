@@ -7,7 +7,7 @@ import { geminiComplete } from "./providers/gemini";
 import { groqComplete } from "./providers/groq";
 
 /** "smart" for open-ended generation, "lite" for cheap, fast extraction. */
-export type ModelTier = "smart" | "lite";
+type ModelTier = "smart" | "lite";
 
 export interface Completion {
   /** Identifier for the schema, sent to providers that want one. */

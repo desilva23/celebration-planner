@@ -9,7 +9,7 @@ import { MAX_BUDGET, type BudgetLine, type CategoryId, type Plan } from "./schem
 
 const CUT_STEP = 100;
 
-export type TradeoffId = "use-contingency" | "protect-priorities" | "trim-guests" | "raise-budget";
+type TradeoffId = "use-contingency" | "protect-priorities" | "trim-guests" | "raise-budget";
 
 export interface TradeoffOption {
   id: TradeoffId;

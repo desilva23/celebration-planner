@@ -33,7 +33,7 @@ type RunCommands = (commands: Command[]) => Promise<unknown[]>;
 const PREFIX = "celebration-planner:";
 
 /** Sends Redis commands to Upstash's REST API in one round trip. */
-export function upstash({ url, token }: { url: string; token: string }): RunCommands {
+function upstash({ url, token }: { url: string; token: string }): RunCommands {
   return async (commands) => {
     const response = await fetch(`${url.replace(/\/+$/, "")}/pipeline`, {
       method: "POST",

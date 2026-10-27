@@ -53,7 +53,7 @@ export const InterpretResultSchema = z.object({
 const CostRangeSchema = z.object({ min: z.number().int().min(0), max: z.number().int().min(0) });
 
 /** What the model returns for an idea. It itemises costs; it never totals them. */
-export const GeneratedIdeaSchema = z.object({
+const GeneratedIdeaSchema = z.object({
   title: z.string().max(80),
   summary: z.string().max(400),
   whyItFits: z.string().max(300),
@@ -68,7 +68,7 @@ export const GeneratedIdeaSchema = z.object({
 });
 
 /** An idea as the app uses it: the estimate is the sum of the breakdown. */
-export const IdeaSchema = GeneratedIdeaSchema.extend({ estimatedCost: CostRangeSchema });
+const IdeaSchema = GeneratedIdeaSchema.extend({ estimatedCost: CostRangeSchema });
 
 export const IdeasRequestSchema = z.object({
   brief: EventBriefSchema,
@@ -111,7 +111,7 @@ export const CompareQuotesRequestSchema = z.object({
     .max(4),
 });
 
-export const QuoteSummarySchema = z.object({
+const QuoteSummarySchema = z.object({
   label: z.string().max(60),
   /** Only figures stated in the quote. Null when the quote doesn't say. */
   total: z.number().int().min(0).nullable(),
@@ -136,7 +136,7 @@ const TimeSchema = z
   .describe("24-hour time as HH:MM");
 
 /** Who a step can be assigned to besides the booked vendors. Nobody else can be named. */
-export const RUN_SHEET_ROLES = ["Hosts", "Family", "Venue staff", "Everyone"] as const;
+const RUN_SHEET_ROLES = ["Hosts", "Family", "Venue staff", "Everyone"] as const;
 
 export const RunSheetRequestSchema = z.object({
   brief: EventBriefSchema,
