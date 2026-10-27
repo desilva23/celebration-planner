@@ -2,8 +2,8 @@
 
 import { useState, type SubmitEvent } from "react";
 import { newId } from "@/lib/client/api";
-import { summariseRsvps } from "@/lib/domain/guests";
-import { addGuest, applyChange, PlanError, removeGuest, setRsvp } from "@/lib/domain/plan";
+import { applyChange, PlanError } from "@/lib/domain/plan";
+import { addGuest, removeGuest, setRsvp, summariseRsvps } from "@/lib/domain/guests";
 import type { Guest, Rsvp } from "@/lib/domain/schema";
 import type { PanelProps } from "./PlanDashboard";
 import { ErrorMessage, Section } from "./ui";
@@ -14,7 +14,6 @@ const RSVPS: Rsvp[] = ["pending", "yes", "no"];
 export function GuestsPanel({ plan, today, onChange, onUpdate }: PanelProps) {
   const rsvps = summariseRsvps(plan.guests);
   const [headcountError, setHeadcountError] = useState<string | null>(null);
-  const suggestHeadcount = rsvps.expected > 0 && rsvps.expected !== plan.brief.guestCount;
 
   /** RSVPs change the plan through the same engine as any other headcount change. */
   function planFor(guestCount: number) {
@@ -49,72 +48,91 @@ export function GuestsPanel({ plan, today, onChange, onUpdate }: PanelProps) {
             {rsvps.invitations} {rsvps.invitations === 1 ? "invitation" : "invitations"} for {rsvps.people} people:{" "}
             {rsvps.yes} coming, {rsvps.no} not coming, {rsvps.pending} yet to reply.
           </p>
-          {suggestHeadcount && (
-            <div className="callout info">
-              <p>
-                Your plan is for {plan.brief.guestCount} guests. Up to {rsvps.expected} could come, counting everyone
-                who hasn’t said no.
-              </p>
-              <button type="button" className="button secondary" onClick={() => planFor(rsvps.expected)}>
-                Plan for {rsvps.expected} guests
-              </button>
-            </div>
-          )}
+          <HeadcountSuggestion planned={plan.brief.guestCount} expected={rsvps.expected} onPlan={planFor} />
           {headcountError && <ErrorMessage>{headcountError}</ErrorMessage>}
-          <div className="table-wrap">
-            <table>
-              <caption className="visually-hidden">Invitations and replies</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Invitation</th>
-                  <th scope="col">People</th>
-                  <th scope="col">Reply</th>
-                  <th scope="col">
-                    <span className="visually-hidden">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {plan.guests.map((guest) => (
-                  <tr key={guest.id}>
-                    <th scope="row">{guest.name}</th>
-                    <td>{guest.partySize}</td>
-                    <td>
-                      <select
-                        aria-label={`Reply from ${guest.name}`}
-                        value={guest.rsvp}
-                        onChange={(e) => onChange(setRsvp(plan, guest.id, e.target.value as Rsvp))}
-                      >
-                        {RSVPS.map((rsvp) => (
-                          <option key={rsvp} value={rsvp}>
-                            {RSVP_LABEL[rsvp]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="button ghost small"
-                        onClick={() =>
-                          onUpdate(
-                            { plan: removeGuest(plan, guest.id), effects: [] },
-                            `${guest.name} removed from the guest list`,
-                          )
-                        }
-                      >
-                        Remove <span className="visually-hidden">{guest.name}</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <GuestTable plan={plan} onChange={onChange} onUpdate={onUpdate} />
         </>
       )}
       <AddGuest onAdd={invite} />
     </Section>
+  );
+}
+
+/** When the replies point to a different headcount, offer to plan for it. */
+function HeadcountSuggestion({
+  planned,
+  expected,
+  onPlan,
+}: {
+  planned: number;
+  expected: number;
+  onPlan: (guestCount: number) => void;
+}) {
+  if (expected === 0 || expected === planned) return null;
+  return (
+    <div className="callout info">
+      <p>
+        Your plan is for {planned} guests. Up to {expected} could come, counting everyone who hasn’t said no.
+      </p>
+      <button type="button" className="button secondary" onClick={() => onPlan(expected)}>
+        Plan for {expected} guests
+      </button>
+    </div>
+  );
+}
+
+function GuestTable({ plan, onChange, onUpdate }: Pick<PanelProps, "plan" | "onChange" | "onUpdate">) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <caption className="visually-hidden">Invitations and replies</caption>
+        <thead>
+          <tr>
+            <th scope="col">Invitation</th>
+            <th scope="col">People</th>
+            <th scope="col">Reply</th>
+            <th scope="col">
+              <span className="visually-hidden">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {plan.guests.map((guest) => (
+            <tr key={guest.id}>
+              <th scope="row">{guest.name}</th>
+              <td>{guest.partySize}</td>
+              <td>
+                <select
+                  aria-label={`Reply from ${guest.name}`}
+                  value={guest.rsvp}
+                  onChange={(e) => onChange(setRsvp(plan, guest.id, e.target.value as Rsvp))}
+                >
+                  {RSVPS.map((rsvp) => (
+                    <option key={rsvp} value={rsvp}>
+                      {RSVP_LABEL[rsvp]}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  className="button ghost small"
+                  onClick={() =>
+                    onUpdate(
+                      { plan: removeGuest(plan, guest.id), effects: [] },
+                      `${guest.name} removed from the guest list`,
+                    )
+                  }
+                >
+                  Remove <span className="visually-hidden">{guest.name}</span>
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

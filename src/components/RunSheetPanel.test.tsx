@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { runSheetFallback } from "@/lib/ai/fallbacks";
-import { bookVendor, upsertVendor } from "@/lib/domain/plan";
+import { bookVendor, upsertVendor } from "@/lib/domain/vendors";
 import type { Plan } from "@/lib/domain/schema";
 import { axeViolations } from "@/test/axe";
 import { stubFetch } from "@/test/fetch";

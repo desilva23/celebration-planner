@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { CATEGORY_META } from "./assumptions";
 import { plannedTotal } from "./budget";
 import { TODAY, weddingBrief } from "./fixtures.test-helpers";
-import { applyChange, applyTradeoff, bookVendor, createPlan, PlanError, setBudgetAmount, upsertVendor } from "./plan";
+import { applyChange, applyTradeoff, createPlan, PlanError, setBudgetAmount } from "./plan";
+import { bookVendor, upsertVendor } from "./vendors";
 import { CATEGORIES, type BudgetLine, type CategoryId, type EventBrief, type Plan } from "./schema";
 import { cutFlexibleLines, overBudgetBy, tradeoffOptions } from "./tradeoffs";
 

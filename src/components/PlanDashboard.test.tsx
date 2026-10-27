@@ -2,7 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { addPayment, bookVendor, setBudgetAmount, upsertVendor } from "@/lib/domain/plan";
+import { setBudgetAmount } from "@/lib/domain/plan";
+import { addPayment, bookVendor, upsertVendor } from "@/lib/domain/vendors";
 import type { Plan } from "@/lib/domain/schema";
 import { axeViolations } from "@/test/axe";
 import { freezeToday, vendor, weddingPlan } from "@/test/plan";
@@ -115,22 +116,22 @@ describe("PlanDashboard", () => {
     render(<Harness initial={initial} saved={saved} />);
     await reviseGuests(user, "250");
 
-    const toast = screen.getByRole("status");
-    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+    await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(saved.mock.lastCall![0]).toBe(initial);
     expect(screen.getByText("Wedding · 1 Mar 2027 · 200 guests · Chennai")).toBeInTheDocument();
-    expect(within(toast).getByRole("heading", { name: "Undone: Plan revised" })).toBeInTheDocument();
-    expect(within(toast).getByText("Your plan is back to how it was.")).toBeInTheDocument();
-    expect(within(toast).queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+    const notice = screen.getByRole("region", { name: "Undone: Plan revised" });
+    expect(within(notice).getByText("Your plan is back to how it was.")).toBeInTheDocument();
+    expect(within(notice).queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Undone: Plan revised. Your plan is back to how it was.");
   });
 
   it("stops offering undo once the plan has changed in another way", async () => {
     const user = userEvent.setup();
     render(<Harness initial={weddingPlan()} />);
     await reviseGuests(user, "250");
-    expect(within(screen.getByRole("status")).getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
     await user.click(screen.getByLabelText("Agree the total budget and what matters most"));
-    expect(within(screen.getByRole("status")).queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
   });
 
   it("reports what a change moved, until dismissed", async () => {
@@ -138,12 +139,13 @@ describe("PlanDashboard", () => {
     render(<Harness initial={weddingPlan()} />);
     await reviseGuests(user, "250");
 
-    const toast = screen.getByRole("status");
-    expect(within(toast).getByRole("heading", { name: "Plan revised" })).toBeInTheDocument();
-    expect(within(toast).getByText("Guests: 200 → 250")).toBeInTheDocument();
+    const notice = screen.getByRole("region", { name: "Plan revised" });
+    expect(within(notice).getByText("Guests: 200 → 250")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/^Plan revised\. Guests: 200 → 250\./);
     expect(screen.getByText("250 guests", { exact: false })).toBeInTheDocument();
 
-    await user.click(within(toast).getByRole("button", { name: "Dismiss" }));
-    expect(toast).toBeEmptyDOMElement();
+    await user.click(within(notice).getByRole("button", { name: "Dismiss" }));
+    expect(notice).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });

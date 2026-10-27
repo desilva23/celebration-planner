@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TODAY, weddingBrief } from "./fixtures.test-helpers";
-import { createPlan, PlanError, upsertVendor } from "./plan";
+import { createPlan, PlanError } from "./plan";
+import { upsertVendor } from "./vendors";
 import { EventBriefSchema, PlanSchema, type Vendor } from "./schema";
 
 const vendor: Vendor = {

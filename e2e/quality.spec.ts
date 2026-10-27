@@ -35,6 +35,22 @@ test.describe("Content Security Policy", () => {
     expect(nonces[0]).not.toBe(nonces[1]);
   });
 
+  test("pages and API responses carry the browser security headers", async ({ page, request }) => {
+    const expected = {
+      "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cross-origin-opener-policy": "same-origin",
+      "cross-origin-resource-policy": "same-origin",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    };
+    const pageHeaders = (await page.goto("/"))!.headers();
+    const apiHeaders = (await request.get("/api/health")).headers();
+    for (const headers of [pageHeaders, apiHeaders]) expect(headers).toMatchObject(expected);
+    expect(pageHeaders).not.toHaveProperty("x-powered-by");
+  });
+
   test("markup injected into the page can't run script", async ({ page, pageErrors }) => {
     await page.goto("/");
     // The usual cross-site scripting payloads, as if untrusted text reached the page as HTML.

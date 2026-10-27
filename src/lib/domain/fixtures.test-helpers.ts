@@ -1,4 +1,4 @@
-import type { EventBrief } from "./schema";
+import type { EventBrief, Plan, Vendor } from "./schema";
 
 export const TODAY = "2026-10-25";
 
@@ -17,3 +17,21 @@ export function weddingBrief(overrides: Partial<EventBrief> = {}): EventBrief {
     ...overrides,
   };
 }
+
+/** A quoted venue, ready to book. */
+export const venueVendor: Vendor = {
+  id: "v1",
+  category: "venue",
+  name: "Lotus Hall",
+  contact: "",
+  quote: 150_000,
+  status: "quoted",
+  notes: "",
+  payments: [],
+};
+
+/** A plan's budget line for `category`. */
+export const line = (plan: Plan, category: string) => plan.budget.find((l) => l.category === category)!;
+
+/** Just the messages of a change's effects. */
+export const messages = (effects: { message: string }[]) => effects.map((e) => e.message);

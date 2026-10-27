@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addGuest } from "@/lib/domain/plan";
+import { addGuest } from "@/lib/domain/guests";
 import { weddingPlan } from "@/test/plan";
 import { planFromLink, shareLink } from "./share";
 
