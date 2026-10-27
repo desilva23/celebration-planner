@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import { z } from "../zod";
 import { InterpretResultSchema } from "./contracts";
 import { AiProviderError, AiResponseError, AiUnavailableError } from "./errors";
 import { generateStructured } from "./llm";

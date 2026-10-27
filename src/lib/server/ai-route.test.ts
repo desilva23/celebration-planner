@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import { z } from "../zod";
 import { POST as compareQuotes } from "@/app/api/compare-quotes/route";
 import { POST as ideas } from "@/app/api/ideas/route";
 import { POST as interpret } from "@/app/api/interpret/route";

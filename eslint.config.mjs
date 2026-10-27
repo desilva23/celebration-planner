@@ -22,7 +22,20 @@ export default defineConfig([
       // User content must never reach the logs; errors are logged deliberately.
       "no-console": ["error", { allow: ["error"] }],
       eqeqeq: "error",
+      // Zod must be configured for the Content-Security-Policy before any schema is built.
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            { name: "zod", message: "Import z from src/lib/zod.ts, which configures it.", allowTypeImports: true },
+          ],
+        },
+      ],
     },
+  },
+  {
+    files: ["src/lib/zod.ts"],
+    rules: { "@typescript-eslint/no-restricted-imports": "off" },
   },
   {
     files: ["**/*.test.{ts,tsx}", "src/test/**"],

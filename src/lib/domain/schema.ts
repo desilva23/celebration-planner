@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../zod";
 
 export const EVENT_TYPES = ["wedding", "birthday", "anniversary", "community", "other"] as const;
 export const TIERS = ["simple", "standard", "premium"] as const;

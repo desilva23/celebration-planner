@@ -4,7 +4,7 @@
 // hints. The full limits are still enforced: replies are trimmed to fit, then
 // validated with Zod.
 
-import { z } from "zod";
+import { z } from "../zod";
 
 type Node = Record<string, unknown>;
 

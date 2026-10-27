@@ -2,7 +2,7 @@
 // incoming requests, describe the JSON the model must return, and re-check
 // what it actually returned.
 
-import { z } from "zod";
+import { z } from "../zod";
 import {
   BudgetLineSchema,
   CategorySchema,
