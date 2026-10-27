@@ -1,14 +1,22 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { axeViolations, createPlan, expect, setGuests, test } from "./fixtures";
+
+/** Whether two elements overlap on screen. */
+async function overlaps(a: Locator, b: Locator): Promise<boolean> {
+  const [p, q] = [await a.boundingBox(), await b.boundingBox()];
+  if (!p || !q) throw new Error("Both elements must be on screen");
+  return p.x < q.x + q.width && q.x < p.x + p.width && p.y < q.y + q.height && q.y < p.y + p.height;
+}
 
 /** Over budget, with a change report and a run sheet showing: the busiest the plan gets. */
 async function busyPlan(page: Page) {
   await createPlan(page);
-  await setGuests(page, 300);
   await page.getByLabel("Invitation (household or group)").fill("Meena's family");
   await page.getByRole("button", { name: "Add invitation" }).click();
   await page.getByRole("button", { name: "Draft a run sheet" }).click();
   await expect(page.getByRole("table", { name: /^Run sheet for/ })).toBeVisible();
+  // Last, so the report it shows stays up for the checks.
+  await setGuests(page, 300);
 }
 
 test.describe("Content Security Policy", () => {
@@ -78,6 +86,22 @@ test.describe("On a 320px-wide screen", () => {
         .map((el) => el.outerHTML.slice(0, 80));
       return [`page is ${root.scrollWidth}px wide in ${root.clientWidth}px`, ...sticksOut];
     });
+
+  test("a control reached by keyboard isn't hidden behind a change report", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" }); // jump rather than glide, to measure
+    await createPlan(page);
+    await setGuests(page, 300);
+    const report = page.locator(".toast");
+    const button = page.getByRole("button", { name: "Add invitation" });
+    // Scroll so the button sits at the bottom of the screen, where the report is.
+    await button.evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().bottom - window.innerHeight + 4));
+    expect(await overlaps(button, report)).toBe(true);
+
+    await page.getByLabel("People", { exact: true }).focus();
+    await page.keyboard.press("Tab");
+    await expect(button).toBeFocused();
+    expect(await overlaps(button, report)).toBe(false);
+  });
 
   test("nothing scrolls sideways", async ({ page }) => {
     await page.goto("/");
