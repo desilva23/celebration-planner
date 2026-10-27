@@ -8,7 +8,8 @@ const config = {
   // Mutants that don't compile are discarded rather than counted.
   checkers: ["typescript"],
   tsconfigFile: "tsconfig.json",
-  mutate: ["src/lib/**/*.ts", "!src/lib/**/*.test.ts", "!src/lib/**/*.test-helpers.ts"],
+  // Data files hold wording, not logic; tests check their structure instead.
+  mutate: ["src/lib/**/*.ts", "!src/lib/**/*.test.ts", "!src/lib/**/*.test-helpers.ts", "!src/lib/**/*.data.ts"],
   coverageAnalysis: "perTest",
   // A timeout counts as a caught mutant. On a busy CI runner the default 5s
   // made slow runs look caught, so allow more before calling it a hang.
