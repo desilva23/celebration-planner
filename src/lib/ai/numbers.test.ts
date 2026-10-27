@@ -43,6 +43,10 @@ describe("numbersMentioned", () => {
     expect([...numbersMentioned("about 2.5 lakh")].sort((a, b) => a - b)).toEqual([2, 3, 250_000]);
   });
 
+  it("reads grouped digits before a unit too", () => {
+    expect([...numbersMentioned("about 1,500k")].sort((a, b) => a - b)).toEqual([1_500, 1_500_000]);
+  });
+
   it("finds nothing in text without figures, or with digits too long to be a price", () => {
     expect(numbersMentioned("call us for a price").size).toBe(0);
     expect(numbersMentioned("9".repeat(400)).size).toBe(0);

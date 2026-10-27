@@ -150,6 +150,7 @@ export function applyChange(plan: Plan, change: PlanChange, today: string, now: 
     const moved = tasks.filter((t) => t.dueDate !== previousDue.get(t.id)).length;
     effects.push({
       tone: "info",
+      // Stryker disable next-line EqualityOperator: the date changed, so the shift is never 0
       message: `Event moved ${Math.abs(shift)} days ${shift < 0 ? "earlier" : "later"}, to ${formatDate(brief.eventDate)}. ${moved} open tasks rescheduled.`,
     });
 
@@ -270,7 +271,7 @@ export function bookVendor(plan: Plan, vendorId: string, now: Date = new Date())
   ];
 
   const taskId = BOOKING_TASK[vendor.category];
-  const tasks = plan.tasks.map((t) => (t.id === taskId && t.status === "todo" ? { ...t, status: "done" as const } : t));
+  const tasks = plan.tasks.map((t) => (t.id === taskId ? { ...t, status: "done" as const } : t));
   const completed = plan.tasks.find((t) => t.id === taskId && t.status === "todo");
   if (completed) effects.push({ tone: "info", message: `Marked “${completed.title}” as done` });
 

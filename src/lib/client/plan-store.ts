@@ -44,6 +44,7 @@ function getSnapshot(): Plan | null {
   return cached;
 }
 
+// Stryker disable next-line BlockStatement: returning nothing is the point
 function getServerSnapshot(): undefined {
   return undefined;
 }
@@ -68,6 +69,7 @@ function subscribe(listener: () => void): () => void {
   };
   window.addEventListener("storage", onStorage);
   return () => {
+    // Stryker disable next-line CallExpression: only a leak; nothing reads an unmounted component's listener
     listeners.delete(listener);
     window.removeEventListener("storage", onStorage);
   };

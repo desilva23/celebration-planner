@@ -30,6 +30,11 @@ describe("share links", () => {
     expect(await planFromLink(hash)).toBeNull();
   });
 
+  it("ignore a valid plan behind some other fragment of the same length", async () => {
+    const encoded = hashOf(await shareLink(weddingPlan(), ORIGIN)).slice("#plan=".length);
+    expect(await planFromLink(`#xlan=${encoded}`)).toBeNull();
+  });
+
   it("ignore a link to a plan this version can't read", async () => {
     const link = await shareLink({ ...weddingPlan(), version: 2 } as never, ORIGIN);
     expect(await planFromLink(hashOf(link))).toBeNull();

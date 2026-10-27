@@ -1,0 +1,175 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`contract limits > CompareQuotesRequest 1`] = `
+[
+  "guestCount: minimum 1, maximum 5000",
+  "budgetForCategory: minimum 0, maximum 9007199254740991",
+  "quotes: minItems 1, maxItems 4",
+  "quotes[].label: minLength 1, maxLength 60",
+  "quotes[].text: minLength 20, maxLength 3000",
+]
+`;
+
+exports[`contract limits > CompareQuotesResult 1`] = `
+[
+  "quotes: maxItems 4",
+  "quotes[].label: maxLength 60",
+  "quotes[].total: minimum 0, maximum 9007199254740991",
+  "quotes[].perGuest: minimum 0, maximum 9007199254740991",
+  "quotes[].guestsCovered: minimum 0, maximum 9007199254740991",
+  "quotes[].inclusions: maxItems 10",
+  "quotes[].inclusions[]: maxLength 120",
+  "quotes[].extraCharges: maxItems 6",
+  "quotes[].extraCharges[]: maxLength 120",
+  "quotes[].terms: maxItems 6",
+  "quotes[].terms[]: maxLength 160",
+  "quotes[].needsClarification: maxItems 6",
+  "quotes[].needsClarification[]: maxLength 200",
+]
+`;
+
+exports[`contract limits > GeneratedIdeas 1`] = `
+[
+  "ideas: minItems 1, maxItems 4",
+  "ideas[].title: maxLength 80",
+  "ideas[].summary: maxLength 400",
+  "ideas[].whyItFits: maxLength 300",
+  "ideas[].details: maxItems 6",
+  "ideas[].details[]: maxLength 160",
+  "ideas[].costBreakdown: minItems 1, maxItems 6",
+  "ideas[].costBreakdown[].min: minimum 0, maximum 9007199254740991",
+  "ideas[].costBreakdown[].max: minimum 0, maximum 9007199254740991",
+  "ideas[].costBreakdown[].item: maxLength 80",
+  "ideas[].assumptions: maxItems 4",
+  "ideas[].assumptions[]: maxLength 160",
+  "followUpQuestion: maxLength 200",
+]
+`;
+
+exports[`contract limits > IdeasRequest 1`] = `
+[
+  "brief.title: minLength 1, maxLength 80",
+  "brief.eventDate: format date",
+  "brief.guestCount: minimum 1, maximum 5000",
+  "brief.totalBudget: minimum 1000, maximum 100000000",
+  "brief.city: maxLength 60",
+  "brief.priorities: maxItems 4",
+  "brief.notes: maxLength 1000",
+  "budget: maxItems 12",
+  "budget[].amount: minimum 0, maximum 9007199254740991",
+  "refinement: maxLength 400",
+  "previous: maxItems 4",
+  "previous[].title: maxLength 80",
+  "previous[].summary: maxLength 400",
+  "previous[].whyItFits: maxLength 300",
+  "previous[].details: maxItems 6",
+  "previous[].details[]: maxLength 160",
+  "previous[].costBreakdown: minItems 1, maxItems 6",
+  "previous[].costBreakdown[].min: minimum 0, maximum 9007199254740991",
+  "previous[].costBreakdown[].max: minimum 0, maximum 9007199254740991",
+  "previous[].costBreakdown[].item: maxLength 80",
+  "previous[].assumptions: maxItems 4",
+  "previous[].assumptions[]: maxLength 160",
+  "previous[].estimatedCost.min: minimum 0, maximum 9007199254740991",
+  "previous[].estimatedCost.max: minimum 0, maximum 9007199254740991",
+]
+`;
+
+exports[`contract limits > IdeasResult 1`] = `
+[
+  "ideas: minItems 1, maxItems 4",
+  "ideas[].title: maxLength 80",
+  "ideas[].summary: maxLength 400",
+  "ideas[].whyItFits: maxLength 300",
+  "ideas[].details: maxItems 6",
+  "ideas[].details[]: maxLength 160",
+  "ideas[].costBreakdown: minItems 1, maxItems 6",
+  "ideas[].costBreakdown[].min: minimum 0, maximum 9007199254740991",
+  "ideas[].costBreakdown[].max: minimum 0, maximum 9007199254740991",
+  "ideas[].costBreakdown[].item: maxLength 80",
+  "ideas[].assumptions: maxItems 4",
+  "ideas[].assumptions[]: maxLength 160",
+  "ideas[].estimatedCost.min: minimum 0, maximum 9007199254740991",
+  "ideas[].estimatedCost.max: minimum 0, maximum 9007199254740991",
+  "followUpQuestion: maxLength 200",
+]
+`;
+
+exports[`contract limits > InterpretRequest 1`] = `
+[
+  "message: minLength 1, maxLength 600",
+  "brief.title: minLength 1, maxLength 80",
+  "brief.eventDate: format date",
+  "brief.guestCount: minimum 1, maximum 5000",
+  "brief.totalBudget: minimum 1000, maximum 100000000",
+  "brief.city: maxLength 60",
+  "brief.priorities: maxItems 4",
+  "brief.notes: maxLength 1000",
+  "today: format date",
+]
+`;
+
+exports[`contract limits > InterpretResult 1`] = `
+[
+  "updates.title: maxLength 80",
+  "updates.eventDate: format date",
+  "updates.guestCount: minimum 1, maximum 5000",
+  "updates.totalBudget: minimum 1000, maximum 100000000",
+  "updates.city: maxLength 60",
+  "updates.priorities: maxItems 4",
+  "updates.notes: maxLength 1000",
+  "understood: maxLength 300",
+  "clarifyingQuestion: maxLength 200",
+]
+`;
+
+exports[`contract limits > RunSheetRequest 1`] = `
+[
+  "brief.title: minLength 1, maxLength 80",
+  "brief.eventDate: format date",
+  "brief.guestCount: minimum 1, maximum 5000",
+  "brief.totalBudget: minimum 1000, maximum 100000000",
+  "brief.city: maxLength 60",
+  "brief.priorities: maxItems 4",
+  "brief.notes: maxLength 1000",
+  "startTime: pattern ^([01]\\d|2[0-3]):[0-5]\\d$",
+  "vendors: maxItems 20",
+  "vendors[].name: minLength 1, maxLength 80",
+]
+`;
+
+exports[`contract limits > RunSheetResult 1`] = `
+[
+  "items: minItems 3, maxItems 30",
+  "items[].time: pattern ^([01]\\d|2[0-3]):[0-5]\\d$",
+  "items[].title: maxLength 80",
+  "items[].details: maxLength 200",
+  "items[].who: maxLength 80",
+  "reminders: maxItems 6",
+  "reminders[]: maxLength 160",
+]
+`;
+
+exports[`contract limits > VendorBriefRequest 1`] = `
+[
+  "brief.title: minLength 1, maxLength 80",
+  "brief.eventDate: format date",
+  "brief.guestCount: minimum 1, maximum 5000",
+  "brief.totalBudget: minimum 1000, maximum 100000000",
+  "brief.city: maxLength 60",
+  "brief.priorities: maxItems 4",
+  "brief.notes: maxLength 1000",
+  "budgetForCategory: minimum 0, maximum 9007199254740991",
+]
+`;
+
+exports[`contract limits > VendorBriefResult 1`] = `
+[
+  "requirements: maxItems 6",
+  "requirements[]: maxLength 160",
+  "questions: maxItems 8",
+  "questions[]: maxLength 200",
+  "watchOuts: maxItems 4",
+  "watchOuts[]: maxLength 160",
+]
+`;

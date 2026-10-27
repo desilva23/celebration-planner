@@ -15,6 +15,7 @@ async function transform(bytes: Uint8Array, stream: CompressionStream | Decompre
 function toBase64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
+  // Stryker disable next-line Regex: base64 only ever pads at the end
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 

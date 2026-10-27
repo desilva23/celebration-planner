@@ -36,6 +36,10 @@ describe("groqComplete", () => {
     await expect(groqComplete(request)).resolves.toBe("{}");
     const [, init] = fetchMock.mock.calls[0]!;
     expect(init?.signal).toBe(request.signal);
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: { Authorization: "Bearer test-key", "Content-Type": "application/json" },
+    });
     expect(sent()).toEqual({
       model: "openai/gpt-oss-20b",
       messages: [

@@ -79,6 +79,20 @@ describe("calendarFile", () => {
     expect(unfold(long)).toContain(`SUMMARY:${"₹".repeat(60)}`);
   });
 
+  it("fills each folded line to exactly 75 bytes, counting the continuation space", () => {
+    const p = plan();
+    const folded = calendarFile({ ...p, brief: { ...p.brief, title: "a".repeat(200) } }, NOW).split("\r\n");
+    const start = folded.findIndex((l) => l.startsWith("SUMMARY:a"));
+    // "SUMMARY:" and 200 letters is 208 bytes: 75, then a space and 74, then a space and the last 59.
+    expect(folded.slice(start, start + 3).map((l) => l.length)).toEqual([75, 75, 60]);
+    expect(folded[start + 1]).toMatch(/^ a+$/);
+  });
+
+  it("closes every event it opens, and ids each task by its kind", () => {
+    expect(ics.match(/^END:VEVENT$/gm)?.length).toBe(events.length);
+    expect(lines.filter((l) => l.startsWith("UID:task-")).length).toBeGreaterThan(0);
+  });
+
   it("uses the current time when none is given", () => {
     expect(calendarFile(plan())).toMatch(/DTSTAMP:\d{8}T\d{6}Z/);
   });

@@ -7,12 +7,12 @@ const UPSTASH = { UPSTASH_REDIS_REST_URL: "https://eu1-example.upstash.io/", UPS
 /** Answers Upstash pipeline requests from an in-memory map, and records them. */
 function fakeUpstash() {
   const data = new Map<string, string>();
-  const requests: { url: string; auth: string | null; commands: (string | number)[][] }[] = [];
+  const requests: { url: string; method?: string; auth: string | null; commands: (string | number)[][] }[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init: RequestInit) => {
       const commands = JSON.parse(init.body as string) as (string | number)[][];
-      requests.push({ url, auth: new Headers(init.headers).get("authorization"), commands });
+      requests.push({ url, method: init.method, auth: new Headers(init.headers).get("authorization"), commands });
       return Response.json(
         commands.map(([command, key, value]) => {
           const name = String(key);
@@ -83,9 +83,16 @@ describe("createStores", () => {
       const env = { KV_REST_API_URL: "https://kv-example.upstash.io", KV_REST_API_TOKEN: "kv-secret" };
       const { cache } = createStores<string>(LIMITS, env);
       await cache.set("abc", "value");
-      expect(requests.map(({ url, auth }) => [url, auth])).toEqual([
-        ["https://kv-example.upstash.io/pipeline", "Bearer kv-secret"],
+      expect(requests.map(({ url, method, auth }) => [url, method, auth])).toEqual([
+        ["https://kv-example.upstash.io/pipeline", "POST", "Bearer kv-secret"],
       ]);
+    });
+
+    it("joins the pipeline path cleanly onto a URL with trailing slashes", async () => {
+      const { requests } = fakeUpstash();
+      const env = { UPSTASH_REDIS_REST_URL: "https://eu1-example.upstash.io//", UPSTASH_REDIS_REST_TOKEN: "t" };
+      await createStores<string>(LIMITS, env).cache.get("abc");
+      expect(requests[0]!.url).toBe("https://eu1-example.upstash.io/pipeline");
     });
 
     it("shares cached answers for the configured time", async () => {

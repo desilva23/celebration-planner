@@ -117,7 +117,9 @@ describe("generateStructured with Groq", () => {
 
   it("gives up after a second bad reply", async () => {
     fetchMock.mockImplementation(async () => groqReply("not json"));
-    await expect(generateStructured(request)).rejects.toBeInstanceOf(AiResponseError);
+    await expect(generateStructured(request)).rejects.toThrow(
+      new AiResponseError("Model output did not match the expected shape"),
+    );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -131,6 +133,6 @@ describe("generateStructured with Groq", () => {
 
   it("reports when no provider is configured", async () => {
     delete process.env.GROQ_API_KEY;
-    await expect(generateStructured(request)).rejects.toBeInstanceOf(AiUnavailableError);
+    await expect(generateStructured(request)).rejects.toThrow(new AiUnavailableError("No AI provider key is set"));
   });
 });

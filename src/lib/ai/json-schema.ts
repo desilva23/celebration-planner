@@ -70,23 +70,23 @@ export function responseSchemas(schema: z.ZodType): ResponseSchemas {
 /**
  * Trims a parsed reply to the schema's size limits: long strings are
  * shortened, extra array items dropped and integers rounded. Anything else is
- * left for Zod to accept or reject.
+ * left for Zod to accept or reject. The value's own type decides what applies,
+ * so a null in a nullable field passes straight through.
  */
 export function fitToSchema(value: unknown, node: Node): unknown {
   if (Array.isArray(node.anyOf)) {
-    if (value === null) return null;
     const branch = (node.anyOf as Node[]).find((b) => b.type !== "null");
     return branch ? fitToSchema(value, branch) : value;
   }
-  if (node.type === "string" && typeof value === "string" && typeof node.maxLength === "number") {
+  if (typeof value === "string" && typeof node.maxLength === "number") {
     return value.length > node.maxLength ? `${value.slice(0, node.maxLength - 1).trimEnd()}…` : value;
   }
   if (node.type === "integer" && typeof value === "number") return Math.round(value);
-  if (node.type === "array" && Array.isArray(value)) {
+  if (Array.isArray(value)) {
     const kept = typeof node.maxItems === "number" ? value.slice(0, node.maxItems) : value;
     return node.items ? kept.map((item) => fitToSchema(item, node.items as Node)) : kept;
   }
-  if (node.type === "object" && value && typeof value === "object" && !Array.isArray(value)) {
+  if (value && typeof value === "object") {
     const properties = (node.properties ?? {}) as Record<string, Node>;
     return Object.fromEntries(
       Object.entries(value).map(([key, child]) => [key, properties[key] ? fitToSchema(child, properties[key]) : child]),

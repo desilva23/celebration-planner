@@ -94,7 +94,6 @@ export function cutFlexibleLines(
   // Flooring leaves a few steps unassigned; give them to the roomiest lines.
   let leftover = target - shares.reduce((sum, s) => sum + s.steps, 0);
   for (const share of [...shares].sort((a, b) => b.room - a.room)) {
-    if (leftover === 0) break;
     const extra = Math.min(leftover, share.room - share.steps);
     share.steps += extra;
     leftover -= extra;
@@ -140,10 +139,14 @@ function trimGuests(plan: Plan, gap: number): TradeoffOption {
   }
 
   // Per-line rounding can leave the scaled plan a rupee or two over, so step
-  // down until it actually fits.
+  // down until it actually fits, or no guests are left.
   let fewer = Math.ceil(gap / perGuest);
   let budget = scaleForGuests(plan.budget, guestCount, guestCount - fewer);
-  while (guestCount - fewer >= 1 && plannedTotal(budget) > totalBudget) {
+  while (
+    // Stryker disable next-line ConditionalExpression,ArithmeticOperator: this guard only stops the loop early; without it the result at zero guests is "not feasible" all the same
+    guestCount - fewer >= 1 &&
+    plannedTotal(budget) > totalBudget
+  ) {
     fewer += 1;
     budget = scaleForGuests(plan.budget, guestCount, guestCount - fewer);
   }

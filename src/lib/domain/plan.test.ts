@@ -21,7 +21,8 @@ import {
   upsertVendor,
 } from "./plan";
 import { PlanSchema, type Guest, type Payment, type Plan, type PlanChange, type Vendor } from "./schema";
-import { tradeoffOptions } from "./tradeoffs";
+import { formatInr } from "./format";
+import { overBudgetBy, tradeoffOptions } from "./tradeoffs";
 
 const NOW = new Date("2026-10-25T06:30:00Z");
 const LATER = new Date("2026-10-26T09:00:00Z");
@@ -50,7 +51,7 @@ function deepFreeze<T>(value: T): T {
 
 describe("createPlan", () => {
   it("refuses an event date that isn't in the future", () => {
-    expect(() => createPlan(weddingBrief({ eventDate: TODAY }), TODAY)).toThrow(PlanError);
+    expect(() => createPlan(weddingBrief({ eventDate: TODAY }), TODAY)).toThrow("Pick an event date after today.");
   });
 
   it("starts with no vendors and stamps both timestamps with the same moment", () => {
@@ -182,7 +183,27 @@ describe("applyChange", () => {
     });
     plan = bookVendor(plan, "c1").plan;
     const { effects } = applyChange(plan, { guestCount: 260 }, TODAY);
-    expect(effects.some((e) => e.tone === "warning" && /re-quote/.test(e.message))).toBe(true);
+    expect(effects).toContainEqual({
+      tone: "warning",
+      message: "Catering was confirmed for 200 guests. Ask the vendor to re-quote for 260.",
+    });
+  });
+
+  it("says how much each headcount-based line moved", () => {
+    const plan = createPlan(weddingBrief(), TODAY);
+    const before = line(plan, "catering").amount;
+    const { effects } = applyChange(plan, { guestCount: 250 }, TODAY);
+    expect(effects).toContainEqual({
+      tone: "info",
+      message: `Catering: ${formatInr(before)} → ${formatInr(Math.round(before * 1.25))}, scaled with headcount`,
+    });
+  });
+
+  it("doesn't ask for a re-quote on an estimate that happens not to change", () => {
+    // Nothing set aside for invitations: still ₹0 at the new headcount, and never confirmed.
+    const plan = setBudgetAmount(createPlan(weddingBrief(), TODAY), "invitations", 0);
+    const { effects } = applyChange(plan, { guestCount: 260 }, TODAY);
+    expect(messages(effects).filter((m) => m.startsWith("Invitations"))).toEqual([]);
   });
 
   it("refuses to move the event into the past", () => {
@@ -192,11 +213,12 @@ describe("applyChange", () => {
 
   it("explains a new budget, experience level and priorities", () => {
     const plan = createPlan(weddingBrief(), TODAY);
-    const { effects } = applyChange(plan, { totalBudget: 820_000, tier: "premium", priorities: ["venue"] }, TODAY);
+    const change: PlanChange = { totalBudget: 820_000, tier: "premium", priorities: ["venue", "decor"] };
+    const { effects } = applyChange(plan, change, TODAY);
     expect(messages(effects)).toEqual([
       "Budget: ₹8,00,000 → ₹8,20,000",
       "Experience level: standard → premium. Catering assumption is now about ₹1,600 per guest.",
-      "Protected when cutting: Venue",
+      "Protected when cutting: Venue, Decor",
     ]);
   });
 
@@ -205,19 +227,26 @@ describe("applyChange", () => {
     expect(messages(effects)).toEqual(["No categories are protected when cutting"]);
   });
 
-  it("reschedules when the event is postponed", () => {
-    const plan = createPlan(weddingBrief(), TODAY);
+  it("reschedules the open tasks when the event is postponed, and nothing else", () => {
+    // A finished task keeps its date, so it isn't counted as moved.
+    const plan = setTaskStatus(createPlan(weddingBrief(), TODAY), "budget", "done");
+    const open = plan.tasks.filter((t) => t.status !== "done").length;
     const { effects } = applyChange(plan, { eventDate: addDays(plan.brief.eventDate, 10) }, TODAY);
-    expect(messages(effects)[0]).toMatch(/^Event moved 10 days later, to 11 Mar 2027\. \d+ open tasks rescheduled\.$/);
+    expect(effects).toEqual([
+      { tone: "info", message: `Event moved 10 days later, to 11 Mar 2027. ${open} open tasks rescheduled.` },
+    ]);
   });
 
   it("warns when a new date squeezes the schedule and makes tasks urgent", () => {
-    const { effects } = applyChange(createPlan(weddingBrief(), TODAY), { eventDate: addDays(TODAY, 10) }, TODAY);
-    const warnings = messages(effects.filter((e) => e.tone === "warning"));
-    expect(warnings[0]).toBe(
+    const { plan, effects } = applyChange(createPlan(weddingBrief(), TODAY), { eventDate: addDays(TODAY, 10) }, TODAY);
+    // Only the tasks now due in the next seven days, not the whole list.
+    const dueSoon = plan.tasks.filter((t) => t.dueDate <= addDays(TODAY, 7)).map((t) => t.title);
+    expect(dueSoon.length).toBeGreaterThan(0);
+    expect(dueSoon.length).toBeLessThan(plan.tasks.length);
+    expect(messages(effects.filter((e) => e.tone === "warning"))).toEqual([
       "Only 10 days left against an ideal 120, so the schedule is compressed and tasks will overlap.",
-    );
-    expect(warnings[1]).toMatch(/^Due within a week: Agree the total budget and what matters most; /);
+      `Due within a week: ${dueSoon.join("; ")}`,
+    ]);
   });
 
   it("warns when catering looks thin for the experience level", () => {
@@ -295,6 +324,27 @@ describe("bookVendor", () => {
     expect(booked.vendors[0]!.status).toBe("booked");
   });
 
+  it.each([
+    ["venue", "venue"],
+    ["catering", "caterer"],
+    ["photography", "photographer"],
+    ["decor", "decor"],
+    ["entertainment", "entertainment"],
+  ] as const)("marks the booking task done when booking %s", (category, taskId) => {
+    const plan = upsertVendor(createPlan(weddingBrief(), TODAY), { ...venueVendor, category });
+    const { plan: booked, effects } = bookVendor(plan, "v1");
+    const task = booked.tasks.find((t) => t.id === taskId)!;
+    expect(task.status).toBe("done");
+    expect(messages(effects)).toContain(`Marked “${task.title}” as done`);
+  });
+
+  it("doesn't warn when a booking leaves the plan exactly on budget", () => {
+    const fresh = createPlan(weddingBrief(), TODAY);
+    expect(overBudgetBy(fresh)).toBe(0);
+    const plan = upsertVendor(fresh, { ...venueVendor, quote: line(fresh, "venue").amount });
+    expect(bookVendor(plan, "v1").effects.filter((e) => e.tone === "warning")).toEqual([]);
+  });
+
   it("needs a quote before booking", () => {
     let plan = createPlan(weddingBrief(), TODAY);
     plan = upsertVendor(plan, {
@@ -307,7 +357,7 @@ describe("bookVendor", () => {
       notes: "",
       payments: [],
     });
-    expect(() => bookVendor(plan, "v1")).toThrow(PlanError);
+    expect(() => bookVendor(plan, "v1")).toThrow("Record the vendor's quote before marking it booked.");
   });
 
   it("refuses a vendor that isn't in the plan", () => {
@@ -441,12 +491,39 @@ describe("cancelBooking", () => {
   it("must come before removing a booked vendor", () => {
     const booked = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
     expect(() => removeVendor(booked, "v1")).toThrow("Cancel the booking before removing this vendor.");
+    // The same with another vendor in the plan, and that other one can still go.
+    const withDecorator = upsertVendor(booked, { ...venueVendor, id: "d1", category: "decor", name: "Petal Works" });
+    expect(() => removeVendor(withDecorator, "v1")).toThrow("Cancel the booking before removing this vendor.");
+    expect(removeVendor(withDecorator, "d1").vendors.map((v) => v.id)).toEqual(["v1"]);
+  });
+
+  it("leaves another category's booking confirmed", () => {
+    let plan = upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor);
+    plan = upsertVendor(plan, { ...venueVendor, id: "d1", category: "decor", name: "Petal Works", quote: 50_000 });
+    plan = bookVendor(bookVendor(plan, "v1").plan, "d1").plan;
+    const { plan: after, effects } = cancelBooking(plan, "v1");
+    expect(line(after, "decor")).toMatchObject({ amount: 50_000, source: "confirmed" });
+    expect(messages(effects)[0]).toBe("Venue is an estimate again. Get fresh quotes before rebooking.");
+  });
+
+  it("touches only its own category and its own booking task", () => {
+    const booked = bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+    const withOtherDone = setTaskStatus(booked, "budget", "done");
+    const { plan } = cancelBooking(withOtherDone, "v1");
+    expect(plan.budget.filter((l) => l.category !== "venue")).toEqual(
+      withOtherDone.budget.filter((l) => l.category !== "venue"),
+    );
+    expect(plan.tasks.filter((t) => t.status === "done").map((t) => t.id)).toEqual(["budget"]);
   });
 });
 
 describe("payments", () => {
   const advance: Payment = { id: "pay1", label: "Advance", amount: 50_000, dueDate: "2026-11-15", paid: false };
   const booked = () => bookVendor(upsertVendor(createPlan(weddingBrief(), TODAY), venueVendor), "v1").plan;
+
+  it("doesn't warn when payments add up to exactly the quote", () => {
+    expect(addPayment(booked(), "v1", { ...advance, amount: 150_000 }).effects).toHaveLength(1);
+  });
 
   it("schedules a payment and says what is due when", () => {
     const { plan, effects } = addPayment(booked(), "v1", advance);

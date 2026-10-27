@@ -22,6 +22,21 @@ describe("useAiCall", () => {
     expect(result.current.loading).toBe(false);
     expect(returned).toEqual(envelope);
     expect(api.sent()).toEqual([{ url: "/api/ideas", body: { question: "?" } }]);
+    expect(vi.mocked(fetch).mock.calls[0]![1]).toMatchObject({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+  });
+
+  it("posts to the endpoint it has now, if that changes", async () => {
+    const api = stubFetch();
+    api.reply(envelope);
+    const { result, rerender } = renderHook(({ path }) => useAiCall(path), { initialProps: { path: "/api/ideas" } });
+    rerender({ path: "/api/run-sheet" });
+    await act(async () => {
+      await result.current.run({});
+    });
+    expect(api.sent()[0]!.url).toBe("/api/run-sheet");
   });
 
   it("shows the server's own error message", async () => {
@@ -145,6 +160,11 @@ describe("newId", () => {
 
   it("still works where crypto.randomUUID isn't available", () => {
     vi.stubGlobal("crypto", {});
+    expect(newId()).toMatch(/^[0-9a-z]{1,8}$/);
+  });
+
+  it("still works where there is no crypto at all", () => {
+    vi.stubGlobal("crypto", undefined);
     expect(newId()).toMatch(/^[0-9a-z]{1,8}$/);
   });
 });

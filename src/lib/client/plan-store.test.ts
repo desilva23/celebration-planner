@@ -86,6 +86,14 @@ describe("usePlan", () => {
     expect(result.current).toEqual(plan);
   });
 
+  it("never sets aside a plan it can read", async () => {
+    localStorage.setItem(KEY, JSON.stringify(weddingPlan()));
+    const { usePlan } = await freshStore();
+    renderHook(() => usePlan());
+    expect(localStorage.getItem(SET_ASIDE_KEY)).toBeNull();
+    expect(localStorage.getItem(KEY)).not.toBeNull();
+  });
+
   it("stops listening when the component unmounts", async () => {
     const { usePlan } = await freshStore();
     const remove = vi.spyOn(window, "removeEventListener");
@@ -126,6 +134,15 @@ describe("savePlan", () => {
 });
 
 describe("a plan set aside", () => {
+  it("isn't changed by another tab's unrelated storage", async () => {
+    const { useSetAsidePlan } = await freshStore();
+    const { result } = renderHook(() => useSetAsidePlan());
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "something-else", newValue: "x" }));
+    });
+    expect(result.current).toBeNull();
+  });
+
   it("is null when there isn't one, including during server rendering", async () => {
     const { useSetAsidePlan } = await freshStore();
     expect(renderHook(() => useSetAsidePlan()).result.current).toBeNull();

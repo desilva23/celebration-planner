@@ -1,0 +1,170 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`prompt text > ideas 1`] = `
+"Event brief:
+<user_input>
+{
+  "eventType": "wedding",
+  "title": "Anu & Ravi's wedding",
+  "eventDate": "2027-03-01",
+  "guestCount": 200,
+  "totalBudget": 800000,
+  "tier": "standard",
+  "city": "Chennai",
+  "priorities": [
+    "catering",
+    "photography"
+  ],
+  "notes": ""
+}
+</user_input>
+
+Budget allocation:
+- Venue (venue): ₹1,76,000 estimate
+- Catering (catering): ₹2,56,000 estimate
+- Decor (decor): ₹96,000 estimate
+- Photography (photography): ₹80,000 estimate
+- Entertainment (entertainment): ₹40,000 estimate
+- Attire (attire): ₹64,000 estimate
+- Invitations (invitations): ₹24,000 estimate
+- Transport (transport): ₹24,000 estimate
+- Contingency (contingency): ₹40,000 estimate"
+`;
+
+exports[`prompt text > ideas, refined 1`] = `
+"Event brief:
+<user_input>
+{
+  "eventType": "wedding",
+  "title": "Anu & Ravi's wedding",
+  "eventDate": "2027-03-01",
+  "guestCount": 200,
+  "totalBudget": 800000,
+  "tier": "standard",
+  "city": "Chennai",
+  "priorities": [
+    "catering",
+    "photography"
+  ],
+  "notes": ""
+}
+</user_input>
+
+Budget allocation:
+- Venue (venue): ₹1,76,000 estimate
+- Catering (catering): ₹2,56,000 estimate
+- Decor (decor): ₹96,000 estimate
+- Photography (photography): ₹80,000 estimate
+- Entertainment (entertainment): ₹40,000 estimate
+- Attire (attire): ₹64,000 estimate
+- Invitations (invitations): ₹24,000 estimate
+- Transport (transport): ₹24,000 estimate
+- Contingency (contingency): ₹40,000 estimate
+
+Previous ideas:
+<user_input>
+[{"title":"Marigold and brass courtyard","summary":"Warm traditional decor built from fresh marigold strings, brass urlis and diyas.","whyItFits":"Sized to your decor estimate of ₹96,000 for 200 guests.","details":["Marigold torans at entrances","Floating flowers in brass urlis","Diya-lined walkway","Banana-leaf accents"],"category":"decor","costBreakdown":[{"item":"Overall estimate","min":57600,"max":86400}],"assumptions":["A built-in starting point, not personalised to your notes","Range is a share of your current estimate, not a quote"],"estimatedCost":{"min":57600,"max":86400}}]
+</user_input>
+
+The user's follow-up:
+<user_input>
+too expensive
+</user_input>"
+`;
+
+exports[`prompt text > interpret, changing a plan 1`] = `
+"Today is 2026-10-25.
+
+Current brief:
+<user_input>
+{
+  "eventType": "wedding",
+  "title": "Anu & Ravi's wedding",
+  "eventDate": "2027-03-01",
+  "guestCount": 200,
+  "totalBudget": 800000,
+  "tier": "standard",
+  "city": "Chennai",
+  "priorities": [
+    "catering",
+    "photography"
+  ],
+  "notes": ""
+}
+</user_input>
+
+Message:
+<user_input>
+50 more guests
+</user_input>"
+`;
+
+exports[`prompt text > interpret, starting a plan 1`] = `
+"Today is 2026-10-25.
+
+There is no brief yet; the user is starting a new plan.
+
+Message:
+<user_input>
+a wedding for 200
+</user_input>"
+`;
+
+exports[`prompt text > quote comparison 1`] = `
+"Vendor type: Catering. The user expects 200 guests and has planned ₹2,56,000 for it.
+
+Quote labelled "Annapoorna":
+<user_input>
+Per plate ₹900, minimum 150 guests.
+</user_input>"
+`;
+
+exports[`prompt text > run sheet 1`] = `
+"Event brief:
+<user_input>
+{
+  "eventType": "wedding",
+  "title": "Anu & Ravi's wedding",
+  "eventDate": "2027-03-01",
+  "guestCount": 200,
+  "totalBudget": 800000,
+  "tier": "standard",
+  "city": "Chennai",
+  "priorities": [
+    "catering",
+    "photography"
+  ],
+  "notes": ""
+}
+</user_input>
+
+Guests arrive at 18:00.
+
+Booked vendors:
+<user_input>
+- Venue: Lotus Hall
+- Catering: Annapoorna
+</user_input>"
+`;
+
+exports[`prompt text > vendor brief 1`] = `
+"Event brief:
+<user_input>
+{
+  "eventType": "wedding",
+  "title": "Anu & Ravi's wedding",
+  "eventDate": "2027-03-01",
+  "guestCount": 200,
+  "totalBudget": 800000,
+  "tier": "standard",
+  "city": "Chennai",
+  "priorities": [
+    "catering",
+    "photography"
+  ],
+  "notes": ""
+}
+</user_input>
+
+Vendor type: Catering. Planned spend: ₹2,56,000."
+`;

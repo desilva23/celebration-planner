@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { activeProvider } from "./provider-config";
+import { activeProvider, PROVIDER_LABEL } from "./provider-config";
+
+describe("PROVIDER_LABEL", () => {
+  it("names each provider as the header shows it", () => {
+    expect(PROVIDER_LABEL).toEqual({ gemini: "Gemini", groq: "Groq" });
+  });
+});
 
 describe("activeProvider", () => {
   it("uses whichever key is set, and AI_PROVIDER when both are", () => {
