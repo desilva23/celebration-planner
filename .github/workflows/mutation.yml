@@ -14,6 +14,11 @@ on:
 permissions:
   contents: read
 
+# A newer push makes an unfinished run on the same branch pointless.
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   mutation:
     name: Stryker on src/lib

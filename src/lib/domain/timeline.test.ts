@@ -38,6 +38,11 @@ describe("planningWindow", () => {
     });
   });
 
+  it("only counts as squeezed with less than the ideal time left", () => {
+    expect(planningWindow("birthday", addDays(TODAY, 30), TODAY).compressed).toBe(false);
+    expect(planningWindow("birthday", addDays(TODAY, 29), TODAY).compressed).toBe(true);
+  });
+
   it("still gives a one-day window once the event date has passed", () => {
     expect(planningWindow("wedding", addDays(TODAY, -3), TODAY)).toMatchObject({ days: 1, compressed: true });
   });

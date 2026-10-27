@@ -143,7 +143,7 @@ The `Dockerfile` builds the standalone server for any container host, such as Cl
 
 Browser tests (`e2e/`, Playwright) run the production build in Chromium with AI off: building, revising and undoing a plan, the run sheet, share links opened in a second browser, and plan files opened on "another device". Every browser test fails if the page logs an error or a CSP violation. They also check the CSP itself (a fresh nonce on every script, injected markup refused), run every axe rule including colour contrast in light and dark themes, and check that nothing scrolls sideways at 320px.
 
-Coverage only shows that code ran. Mutation testing (`stryker.config.mjs`) shows whether the tests would notice if it were wrong: Stryker makes thousands of small changes to `src/lib`, such as flipping a comparison, and checks that a test fails for each. The score and every surviving mutant are in the report the workflow uploads.
+Coverage only shows that code ran. Mutation testing (`stryker.config.mjs`) shows whether the tests would notice if it were wrong: Stryker makes thousands of small changes to `src/lib`, such as flipping a comparison, and checks that a test fails for each. It scores 99.9%, and the run fails below 97%. The report the workflow uploads shows every mutant that survives.
 
 CI (`.github/workflows/ci.yml`) runs formatting, lint, typecheck, tests with coverage, a production build and the browser tests on every push and pull request. Mutation testing runs weekly (`mutation.yml`), and Dependabot proposes dependency and action updates every week.
 

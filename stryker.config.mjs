@@ -16,7 +16,9 @@ const config = {
   reporters: ["clear-text", "progress", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },
   jsonReporter: { fileName: "reports/mutation/mutation.json" },
-  thresholds: { high: 95, low: 90, break: null },
+  // The first honest run scored 99.9%. Below 97% the run fails, which leaves
+  // room for a little untested code but not for tests that stop checking.
+  thresholds: { high: 99, low: 98, break: 97 },
   // Keeps results in reports/, so a rerun only tests mutants whose code or tests changed.
   incremental: true,
 };

@@ -165,7 +165,15 @@ describe("prompt text", () => {
     ],
     [
       "run sheet",
-      () => runSheetPrompt({ brief, startTime: "18:00", vendors: [{ category: "venue", name: "Lotus Hall" }] }),
+      () =>
+        runSheetPrompt({
+          brief,
+          startTime: "18:00",
+          vendors: [
+            { category: "venue", name: "Lotus Hall" },
+            { category: "catering", name: "Annapoorna" },
+          ],
+        }),
     ],
   ])("%s", (_, prompt) => {
     expect(prompt()).toMatchSnapshot();
