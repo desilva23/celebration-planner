@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/desilva23/celebration-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/desilva23/celebration-planner/actions/workflows/ci.yml)
 
+**Live:** https://celebration-planner-jade.vercel.app
+
 A GenAI planning assistant for weddings, birthdays and community events. It builds a budget, a schedule in the right order and a vendor checklist from a short brief. When something changes, it **revises the plan instead of starting over**.
 
 > PromptWars Virtual, Challenge 5: Celebration & Event Planner
