@@ -111,10 +111,14 @@ function memoryCache<V>(limits: StoreLimits): ResponseCache<V> {
   };
 }
 
-/** Upstash Redis when both of its variables are set, memory otherwise. */
+/**
+ * Upstash Redis when its URL and token are both set, memory otherwise. Vercel's
+ * Upstash integration names them KV_REST_API_URL and KV_REST_API_TOKEN, so
+ * those are read too, as Upstash's own client does.
+ */
 export function createStores<V>(limits: StoreLimits, env: Env = process.env, now?: () => number) {
-  const url = env.UPSTASH_REDIS_REST_URL;
-  const token = env.UPSTASH_REDIS_REST_TOKEN;
+  const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
   if (url && token) {
     const run = upstash({ url, token });
     return { limiter: redisRateLimiter(run, limits, now), cache: redisCache<V>(run, limits) };

@@ -78,6 +78,16 @@ describe("createStores", () => {
       expect((await limiter.check("203.0.113.9")).ok).toBe(true);
     });
 
+    it("also finds it under the names Vercel's Upstash integration sets", async () => {
+      const { requests } = fakeUpstash();
+      const env = { KV_REST_API_URL: "https://kv-example.upstash.io", KV_REST_API_TOKEN: "kv-secret" };
+      const { cache } = createStores<string>(LIMITS, env);
+      await cache.set("abc", "value");
+      expect(requests.map(({ url, auth }) => [url, auth])).toEqual([
+        ["https://kv-example.upstash.io/pipeline", "Bearer kv-secret"],
+      ]);
+    });
+
     it("shares cached answers for the configured time", async () => {
       const { requests } = fakeUpstash();
       const { cache } = createStores<{ source: string }>(LIMITS, UPSTASH);
