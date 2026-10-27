@@ -133,23 +133,43 @@ Leave `TRUSTED_PROXY_HOPS` unset: Vercel replaces `X-Forwarded-For` with the cli
 
 The `Dockerfile` builds the standalone server for any container host, such as Cloud Run. Set the same variables, and set `TRUSTED_PROXY_HOPS=2` behind an external Google Cloud load balancer, which adds its own address after the client's.
 
-## Quality notes
+## Quality
 
-**Security.** API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts, event handlers and styles never run, plus other security headers. Nothing needs `eval`: Zod is configured not to compile parsers with it (`src/lib/zod.ts`). Share links carry the plan in the URL fragment, which browsers never send to a server. User content is never logged.
+### Problem statement alignment
 
-**Efficiency.** Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes, in memory or in Upstash Redis when it is configured. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
+The brief asks for help with budgets, timelines, vendor checklists and personalised ideas; [What it does](#what-it-does) maps each to how it's handled, and [Try the core scenario](#try-the-core-scenario) shows them working together when the plan changes. GenAI is used where language or creativity is the job, and kept away from anything that has to add up ([How GenAI is used](#how-genai-is-used-and-where-it-isnt)). Beyond the brief: guests and RSVPs, vendor payments, a day-of run sheet, and plans you can download, share or add to a calendar.
 
-**Reliability.** Every plan operation checks its result against the same schema used to load saved plans, so no change can store a plan that would fail to load next time. Out-of-range input is refused with a plain-language reason instead. A saved plan that still can't be read, such as one saved by a different version, is set aside rather than discarded, and the user is offered a download. If the page fails to render, an error screen offers to try again or to start over with the plan kept.
+### Code quality
 
-**Testing.** Statements, branches, functions and lines are all at 100% across `src/`, and the run fails if any of them drops (`vitest.config.mts`). Domain, AI and server code is tested in Node. Components and browser storage are tested in jsdom with Testing Library, driven through labels and roles as a user would, and each panel is checked with axe for accessibility problems. The full replan scenario above is a single test (`src/lib/domain/plan.test.ts`). The built-in fallbacks are held to the same Zod contracts as the model, and plan operations are tested for purity.
+Strict TypeScript, including `noUncheckedIndexedAccess`, `noUnusedLocals` and `noUnusedParameters`. ESLint (Next.js, React Hooks, jsx-a11y and type-aware TypeScript rules) allows no warnings, Prettier formats everything, and Knip fails the build on unused files, exports or dependencies. A jscpd scan finds no duplicated code. The plan engine (`src/lib/domain`) is pure and framework-free; the same Zod contracts validate requests, describe the JSON the model must return, and check what it did return.
+
+Every plan operation checks its result against the same schema used to load saved plans, so no change can store a plan that would fail to load next time. Out-of-range input is refused with a plain-language reason instead. A saved plan that still can't be read, such as one saved by a different version, is set aside rather than discarded, and the user is offered a download. If the page fails to render, an error screen offers to try again or to start over with the plan kept.
+
+### Security
+
+API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts, event handlers and styles never run, plus other security headers. Nothing needs `eval`: Zod is configured not to compile parsers with it (`src/lib/zod.ts`). Share links carry the plan in the URL fragment, which browsers never send to a server. User content is never logged.
+
+CodeQL scans every push and pull request, Dependabot proposes updates weekly, `npm audit` reports no vulnerabilities, and [SECURITY.md](SECURITY.md) explains how to report a problem privately.
+
+### Efficiency
+
+Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes, in memory or in Upstash Redis when it is configured. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
+
+Lighthouse on the live site scores Performance 96 on throttled mobile and 100 on desktop, with Largest Contentful Paint at 2.2 s and 0.5 s and no layout shift.
+
+### Testing
+
+Statements, branches, functions and lines are all at 100% across `src/`, and the run fails if any of them drops (`vitest.config.mts`). Domain, AI and server code is tested in Node. Components and browser storage are tested in jsdom with Testing Library, driven through labels and roles as a user would, and each panel is checked with axe for accessibility problems. The full replan scenario above is a single test (`src/lib/domain/plan.test.ts`). The built-in fallbacks are held to the same Zod contracts as the model, and plan operations are tested for purity.
 
 Browser tests (`e2e/`, Playwright) run the production build in Chromium with AI off: building, revising and undoing a plan, the run sheet, share links opened in a second browser, and plan files opened on "another device". Every browser test fails if the page logs an error or a CSP violation. They also check the CSP itself (a fresh nonce on every script, injected markup refused), run every axe rule including colour contrast in light and dark themes, and check that nothing scrolls sideways at 320px.
 
-Coverage only shows that code ran. Mutation testing (`stryker.config.mjs`) shows whether the tests would notice if it were wrong: Stryker makes thousands of small changes to `src/lib`, such as flipping a comparison, and checks that a test fails for each. It scores 99.9%, and the run fails below 97%. The report the workflow uploads shows every mutant that survives.
+Coverage only shows that code ran. Mutation testing (`stryker.config.mjs`) shows whether the tests would notice if it were wrong: Stryker makes thousands of small changes to `src/lib`, such as flipping a comparison, and checks that a test fails for each. It scores over 99%, and the run fails below 97%. The report the workflow uploads shows every mutant that survives.
 
-CI (`.github/workflows/ci.yml`) runs formatting, lint, typecheck, tests with coverage, a production build and the browser tests on every push and pull request. Mutation testing runs weekly (`mutation.yml`), and Dependabot proposes dependency and action updates every week.
+CI (`.github/workflows/ci.yml`) runs formatting, lint, Knip, typecheck, tests with coverage, a production build and the browser tests on every push and pull request, and `main` only accepts changes that pass. Mutation testing runs weekly (`mutation.yml`), and Dependabot proposes dependency and action updates every week.
 
-**Accessibility.** Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 320px (WCAG reflow). Contrast and reflow are checked in a real browser on every pull request.
+### Accessibility
+
+Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 320px (WCAG reflow). Contrast and reflow are checked in a real browser on every pull request. Lighthouse scores Accessibility 100 on mobile and desktop.
 
 ## Limitations
 
