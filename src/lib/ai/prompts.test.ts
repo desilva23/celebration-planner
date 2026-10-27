@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allocateBudget } from "../domain/budget";
 import { TODAY, weddingBrief } from "../domain/fixtures.test-helpers";
+import { ideasFallback } from "./fallbacks";
 import {
   COMPARE_QUOTES_SYSTEM,
   compareQuotesPrompt,
@@ -138,5 +139,35 @@ describe("runSheetPrompt", () => {
     expect(runSheetPrompt({ brief: weddingBrief(), startTime: "18:00", vendors: [] })).toContain(
       "None booked yet; use the roles.",
     );
+  });
+});
+
+describe("prompt text", () => {
+  // Exactly what the model is asked. A change here changes its answers, so it should be reviewed.
+  const brief = weddingBrief();
+  const budget = allocateBudget(brief);
+  const previous = ideasFallback({ brief, budget }).ideas.slice(0, 1);
+  it.each([
+    ["interpret, starting a plan", () => interpretPrompt({ message: "a wedding for 200", brief: null, today: TODAY })],
+    ["interpret, changing a plan", () => interpretPrompt({ message: "50 more guests", brief, today: TODAY })],
+    ["ideas", () => ideasPrompt({ brief, budget })],
+    ["ideas, refined", () => ideasPrompt({ brief, budget, refinement: "too expensive", previous })],
+    ["vendor brief", () => vendorBriefPrompt({ brief, category: "catering", budgetForCategory: 256_000 })],
+    [
+      "quote comparison",
+      () =>
+        compareQuotesPrompt({
+          category: "catering",
+          guestCount: 200,
+          budgetForCategory: 256_000,
+          quotes: [{ label: "Annapoorna", text: "Per plate ₹900, minimum 150 guests." }],
+        }),
+    ],
+    [
+      "run sheet",
+      () => runSheetPrompt({ brief, startTime: "18:00", vendors: [{ category: "venue", name: "Lotus Hall" }] }),
+    ],
+  ])("%s", (_, prompt) => {
+    expect(prompt()).toMatchSnapshot();
   });
 });

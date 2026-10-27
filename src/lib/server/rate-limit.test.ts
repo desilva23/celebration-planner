@@ -35,6 +35,31 @@ describe("createRateLimiter", () => {
     expect(limiter.check("newcomer", 1_500).ok).toBe(false);
   });
 
+  it("stops counting a request exactly one window after it", () => {
+    const limiter = createRateLimiter({ limit: 1, windowMs: 1_000 });
+    limiter.check("a", 0);
+    expect(limiter.check("a", 999).ok).toBe(false);
+    expect(limiter.check("a", 1_000).ok).toBe(true);
+  });
+
+  // Many distinct addresses must not grow memory without bound.
+  it("forgets clients idle for a whole window once it tracks over 10,000", () => {
+    const limiter = createRateLimiter({ limit: 5, windowMs: 1_000 });
+    for (let i = 0; i < 9_999; i++) limiter.check(`idle-${i}`, 0);
+    limiter.check("active", 0);
+    limiter.check("active", 600); // its latest request still counts at 1,000
+    expect(limiter.size).toBe(10_000);
+    limiter.check("newcomer", 1_000);
+    expect(limiter.size).toBe(2);
+  });
+
+  it("keeps every client while it tracks 10,000 or fewer", () => {
+    const limiter = createRateLimiter({ limit: 5, windowMs: 1_000 });
+    for (let i = 0; i < 10_000; i++) limiter.check(`client-${i}`, 0);
+    limiter.check("client-0", 5_000);
+    expect(limiter.size).toBe(10_000);
+  });
+
   it("uses the real clock by default", () => {
     expect(createRateLimiter({ limit: 1, windowMs: 60_000 }).check("a").ok).toBe(true);
   });
@@ -57,6 +82,10 @@ describe("clientKey", () => {
 
   it("uses the left-most entry when there are fewer entries than hops", () => {
     expect(clientKey(request({ "x-forwarded-for": "203.0.113.9" }), 3)).toBe("203.0.113.9");
+  });
+
+  it("ignores empty entries, such as a trailing comma", () => {
+    expect(clientKey(request({ "x-forwarded-for": "203.0.113.9, " }), 1)).toBe("203.0.113.9");
   });
 
   it("falls back to the real-IP header, then to a shared bucket", () => {

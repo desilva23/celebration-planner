@@ -11,7 +11,6 @@ export function createRateLimiter({ limit, windowMs }: { limit: number; windowMs
     check(key: string, now: number = Date.now()): RateLimitResult {
       const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
       if (recent.length >= limit) {
-        hits.set(key, recent);
         // With a limit of zero there is no oldest request, so wait a full window.
         const oldest = recent[0] ?? now;
         return { ok: false, retryAfterSeconds: Math.ceil((windowMs - (now - oldest)) / 1000) };
@@ -23,13 +22,17 @@ export function createRateLimiter({ limit, windowMs }: { limit: number; windowMs
       }
       return { ok: true };
     },
+    /** How many clients are being tracked; idle ones are forgotten once there are over 10,000. */
+    get size() {
+      return hits.size;
+    },
   };
 }
 
 /** TRUSTED_PROXY_HOPS as a whole number of at least 1; anything else means 1. */
 export function trustedProxyHops(env: Record<string, string | undefined> = process.env): number {
   const hops = Number(env.TRUSTED_PROXY_HOPS ?? 1);
-  return Number.isInteger(hops) && hops >= 1 ? hops : 1;
+  return Number.isInteger(hops) ? Math.max(1, hops) : 1;
 }
 
 /**

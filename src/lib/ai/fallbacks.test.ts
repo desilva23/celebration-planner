@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allocateBudget } from "../domain/budget";
 import { TODAY, weddingBrief } from "../domain/fixtures.test-helpers";
+import { formatInr } from "../domain/format";
 import { CATEGORIES, EVENT_TYPES, type EventBrief } from "../domain/schema";
 import { IdeasResultSchema, InterpretResultSchema, runSheetResultFor, VendorBriefResultSchema } from "./contracts";
 import { ideasFallback, interpretFallback, runSheetFallback, vendorBriefFallback } from "./fallbacks";
@@ -58,6 +59,40 @@ describe("interpretFallback", () => {
     const result = interpretFallback({ message: "our budget has decreased a bit", brief, today: TODAY });
     expect(result.updates.totalBudget).toBeNull();
     expect(result.clarifyingQuestion).toMatch(/how much/i);
+  });
+
+  it.each([
+    ["12 lakh in all", 1_200_000],
+    ["about 12lakh", 1_200_000],
+    ["8 lakh, give or take", 800_000],
+    ["5 lac", 500_000],
+    ["1.25 crore all told", 12_500_000],
+  ])("reads an amount in lakhs or crores on its own: %s", (message, totalBudget) => {
+    expect(read(message).updates.totalBudget).toBe(totalBudget);
+  });
+
+  it.each(["the budget dropped a lot", "budget  fell", "the budget has  dropped"])(
+    "asks by how much when the budget changed without a figure: %s",
+    (message) => {
+      expect(read(message)).toMatchObject({
+        updates: { totalBudget: null },
+        clarifyingQuestion: "By how much did the budget change? A rough figure is fine.",
+      });
+    },
+  );
+
+  it("treats today as too soon for the event", () => {
+    expect(read(`move it to ${TODAY}`)).toMatchObject({
+      updates: { eventDate: null },
+      clarifyingQuestion: "That date would be in the past. What's the new date?",
+    });
+  });
+
+  it("sums up everything it understood, for the user to confirm", () => {
+    const message = "We now have 250 guests, budget 9 lakh, move it to 2027-04-01, food matters most, keep it simple";
+    expect(read(message).understood).toBe(
+      "Understood: 250 guests, a budget of ₹9,00,000, on 1 Apr 2027, protect catering, a simple feel.",
+    );
   });
 
   // Regression: the summary named every category mentioned, though only four are protected.
@@ -161,6 +196,8 @@ describe("interpretFallback", () => {
     ["we care most about decor and music", ["decor", "entertainment"]],
     ["the venue and photos are important", ["photography", "venue"]],
     ["outfits matter most", ["attire"]],
+    ["we care about the venue", ["venue"]],
+    ["food matters  most", ["catering"]],
   ])("reads what matters most: %s", (message, priorities) => {
     expect(read(message).updates.priorities).toEqual(priorities);
   });
@@ -224,6 +261,31 @@ describe("ideasFallback", () => {
     ]);
   });
 
+  it("suggests different ideas for a community event", () => {
+    const brief = weddingBrief({ eventType: "community" });
+    expect(ideasFallback({ brief, budget: allocateBudget(brief) }).ideas.map((i) => i.title)).toEqual([
+      "Marigold and brass courtyard",
+      "Activity stations for all ages",
+      "Live chaat and dosa counters",
+    ]);
+  });
+
+  it("says how each idea was sized", () => {
+    const budget = allocateBudget(weddingBrief());
+    const catering = budget.find((l) => l.category === "catering")!.amount;
+    const { ideas } = ideasFallback({ brief: weddingBrief(), budget });
+    expect(ideas.find((i) => i.category === "catering")!.whyItFits).toBe(
+      `Sized to your catering estimate of ${formatInr(catering)} for 200 guests.`,
+    );
+  });
+
+  it.each(EVENT_TYPES)("gives every idea for a %s some details", (eventType) => {
+    const brief = weddingBrief({ eventType });
+    for (const idea of ideasFallback({ brief, budget: allocateBudget(brief) }).ideas) {
+      expect(idea.details.length, idea.title).toBeGreaterThan(0);
+    }
+  });
+
   it("only suggests ideas for lines the budget has, in round ₹100s", () => {
     const budget = allocateBudget(weddingBrief()).filter((l) => l.category !== "decor");
     const { ideas } = ideasFallback({ brief: weddingBrief(), budget });
@@ -247,6 +309,15 @@ describe("vendorBriefFallback", () => {
     expect(questions.join(" ")).toMatch(/guest count changes/);
     expect(questions.join(" ")).toMatch(/cancellation/);
   });
+
+  it.each(["venue", "catering", "photography", "decor", "entertainment"] as const)(
+    "adds questions and watch-outs specific to %s",
+    (category) => {
+      const result = vendorBriefFallback({ category, brief: weddingBrief(), budgetForCategory: 100_000 });
+      expect(result.questions).toHaveLength(6);
+      expect(result.watchOuts).toHaveLength(2);
+    },
+  );
 
   it("falls back to general advice for a vendor type without specifics", () => {
     const result = vendorBriefFallback({ category: "attire", brief: weddingBrief(), budgetForCategory: 64_000 });

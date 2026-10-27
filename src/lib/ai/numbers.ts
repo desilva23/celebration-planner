@@ -19,6 +19,7 @@ export const AMOUNT = String.raw`(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|cr
 export function parseAmount(digits: string, unit?: string): number | null {
   const value = Number(digits.replace(/,/g, ""));
   if (!Number.isFinite(value)) return null;
+  // Stryker disable next-line Regex: every unit ends in its only "s"
   const multiplier = unit ? (UNIT_MULTIPLIER[unit.toLowerCase().replace(/s$/, "")] ?? 1) : 1;
   return Math.round(value * multiplier);
 }

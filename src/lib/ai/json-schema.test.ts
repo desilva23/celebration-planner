@@ -23,7 +23,18 @@ function prop(node: { properties?: unknown }, name: string): Prop {
   return found;
 }
 
-const LIMIT_KEYS = ["maxLength", "minLength", "pattern", "format", "maxItems", "minItems", "minimum", "maximum"];
+const LIMIT_KEYS = [
+  "maxLength",
+  "minLength",
+  "pattern",
+  "format",
+  "maxItems",
+  "minItems",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+];
 
 function keysIn(value: unknown, found = new Set<string>()): Set<string> {
   if (Array.isArray(value)) value.forEach((v) => keysIn(v, found));
@@ -84,6 +95,28 @@ describe("responseSchemas", () => {
     expect(prop(portable, "count").description).toBeUndefined();
   });
 
+  it("strips every kind of limit, including ones the contracts don't use yet", () => {
+    const schema = z.object({
+      name: z.string().min(1).regex(/^a/),
+      score: z.number().gt(0).lt(10),
+      on: z.iso.date(),
+      tags: z.array(z.string()).min(2),
+    });
+    const keys = keysIn(responseSchemas(schema).portable);
+    for (const k of LIMIT_KEYS) expect(keys.has(k), k).toBe(false);
+  });
+
+  it("only hints at a minimum number of items when there is one", () => {
+    const { portable } = responseSchemas(z.object({ tags: z.array(z.string()).min(0) }));
+    expect(prop(portable, "tags").description).toBeUndefined();
+  });
+
+  it("treats bounds of a trillion or more as Zod's defaults, not real limits", () => {
+    const { portable } = responseSchemas(z.object({ big: z.number().max(1e12), almost: z.number().max(1e12 - 1) }));
+    expect(prop(portable, "big").description).toBeUndefined();
+    expect(prop(portable, "almost").description).toBe("maximum 999999999999");
+  });
+
   it("explains a time format the model can't be sent as a pattern", () => {
     const { portable } = responseSchemas(runSheetResultFor([]));
     expect(JSON.stringify(portable)).toContain('"description":"24-hour time as HH:MM"');
@@ -134,6 +167,18 @@ describe("fitToSchema", () => {
     expect(fitToSchema("x", { anyOf: [{ type: "null" }] })).toBe("x");
   });
 
+  it("cuts at the end of a word, without a space before the ellipsis", () => {
+    expect(fitToSchema("hello world", { type: "string", maxLength: 7 })).toBe("hello…");
+  });
+
+  it("fits a nullable field whichever order its options come in", () => {
+    expect(fitToSchema("abcdef", { anyOf: [{ type: "null" }, { type: "string", maxLength: 3 }] })).toBe("ab…");
+  });
+
+  it("rounds integers but not other numbers", () => {
+    expect(fitToSchema(2.5, { type: "number" })).toBe(2.5);
+  });
+
   it("leaves short strings, unlimited arrays and untyped items alone", () => {
     expect(fitToSchema("abc", { type: "string", maxLength: 3 })).toBe("abc");
     expect(fitToSchema("abcdef", { type: "string" })).toBe("abcdef");
@@ -152,5 +197,6 @@ describe("fitToSchema", () => {
     expect(fitToSchema([1], { type: "object", properties: {} })).toEqual([1]);
     expect(fitToSchema(7, { type: "string", maxLength: 1 })).toBe(7);
     expect(fitToSchema(null, { type: "object" })).toBeNull();
+    expect(fitToSchema("abc", { type: "object", properties: {} })).toBe("abc");
   });
 });

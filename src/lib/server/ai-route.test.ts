@@ -192,6 +192,7 @@ describe("aiRoute", () => {
     for (let i = 0; i < 20; i++) expect((await handler(post({ message: `m${i}` }, headers))).status).toBe(200);
     const limited = await handler(post({ message: "one more" }, headers));
     expect(limited.status).toBe(429);
+    expect((await limited.json()).error).toBe("Too many requests. Wait a moment and try again.");
     expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
     expect((await handler(post({ message: "another client" }, client()))).status).toBe(200);
   });
@@ -237,6 +238,46 @@ describe("aiRoute", () => {
       host: "10.0.0.5:8080",
     };
     expect((await route(async () => "ok")(post({ message: "hi" }, headers))).status).toBe(200);
+  });
+
+  it.each([
+    [
+      "a cross-site request",
+      () => post({ message: "hi" }, { ...client(), origin: "https://evil.example" }),
+      403,
+      "Cross-site requests are not allowed.",
+    ],
+    [
+      "a declared size over the limit",
+      () => post({ message: "hi" }, { ...client(), "content-length": "32001" }),
+      413,
+      "Request is too large.",
+    ],
+    ["a streamed body over the limit", () => streamed(["x".repeat(32_001)]), 413, "Request is too large."],
+    ["a body that isn't JSON", () => post("{not json", client()), 400, "Request body must be JSON."],
+    [
+      "a request with no body",
+      () =>
+        new Request("http://localhost:3000/api/x", {
+          method: "POST",
+          headers: { ...client(), host: "localhost:3000" },
+        }),
+      400,
+      "Request body must be JSON.",
+    ],
+    ["fields that don't fit", () => post({ message: "" }, client()), 400, "Some fields are missing or invalid."],
+  ] as const)("says why it refused %s", async (_, request, status, error) => {
+    const res = await route(async () => "ok")(request());
+    expect(res.status).toBe(status);
+    expect((await res.json()).error).toBe(error);
+  });
+
+  it("accepts a body of exactly the size limit, declared or streamed", async () => {
+    const body = JSON.stringify({ message: "x".repeat(32_000 - '{"message":""}'.length) });
+    expect(new TextEncoder().encode(body).byteLength).toBe(32_000);
+    const handler = route(async () => "ok");
+    expect((await handler(post(body, { ...client(), "content-length": "32000" }))).status).toBe(200);
+    expect((await handler(streamed([body]))).status).toBe(200);
   });
 
   it("refuses an Origin it can't parse", async () => {

@@ -17,7 +17,7 @@ export function fileSlug(title: string): string {
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-|-$/g, ""); // the line above already turned each run into a single hyphen
   return slug || "celebration-plan";
 }
 

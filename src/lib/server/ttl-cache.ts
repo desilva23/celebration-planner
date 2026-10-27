@@ -7,6 +7,7 @@ export function createTtlCache<V>({ maxEntries, ttlMs }: { maxEntries: number; t
       const entry = store.get(key);
       if (!entry) return undefined;
       if (entry.expires <= now) {
+        // Stryker disable next-line CallExpression: only frees memory; entries expire in the order they are evicted
         store.delete(key);
         return undefined;
       }

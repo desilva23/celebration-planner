@@ -59,6 +59,16 @@ describe("downloadFile", () => {
     expect(revoke).toHaveBeenCalledWith("blob:test/0");
   });
 
+  it("puts the link in the page while clicking it, as some browsers need", () => {
+    captureDownloads();
+    let inPage: boolean | undefined;
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      inPage = this.isConnected;
+    });
+    downloadFile("plan.json", "{}");
+    expect(inPage).toBe(true);
+  });
+
   it("can save other kinds of file", () => {
     const files = captureDownloads();
     downloadFile("deadlines.ics", "BEGIN:VCALENDAR", "text/calendar");

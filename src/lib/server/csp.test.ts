@@ -12,6 +12,14 @@ describe("contentSecurityPolicy", () => {
     expect(contentSecurityPolicy("abc123", false)).not.toMatch(/unsafe-inline|unsafe-eval/);
   });
 
+  it("is exactly this policy in production", () => {
+    expect(contentSecurityPolicy("abc123", false)).toBe(
+      "default-src 'self'; script-src 'self' 'nonce-abc123' 'strict-dynamic'; style-src 'self' 'nonce-abc123'; " +
+        "img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; " +
+        "base-uri 'self'; form-action 'self'",
+    );
+  });
+
   it("blocks plugins, framing and base-tag tricks", () => {
     const policy = directives(contentSecurityPolicy("n", false));
     expect(policy.get("object-src")).toBe("object-src 'none'");

@@ -10,6 +10,9 @@ const config = {
   tsconfigFile: "tsconfig.json",
   mutate: ["src/lib/**/*.ts", "!src/lib/**/*.test.ts", "!src/lib/**/*.test-helpers.ts"],
   coverageAnalysis: "perTest",
+  // A timeout counts as a caught mutant. On a busy CI runner the default 5s
+  // made slow runs look caught, so allow more before calling it a hang.
+  timeoutMS: 15_000,
   reporters: ["clear-text", "progress", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },
   jsonReporter: { fileName: "reports/mutation/mutation.json" },

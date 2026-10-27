@@ -126,6 +126,7 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
   if (updates.totalBudget !== null && !TotalBudgetSchema.safeParse(updates.totalBudget).success) {
     // A figure under the minimum is more likely a price than a budget, so it is
     // ignored; one over the maximum was meant as a budget and is worth asking about.
+    // Stryker disable next-line EqualityOperator: exactly the maximum is a valid budget, so it never gets here
     if (updates.totalBudget > MAX_BUDGET) {
       clarifyingQuestion = `The planner handles budgets up to ${formatInr(MAX_BUDGET)}. What total should it use?`;
     }
@@ -208,6 +209,7 @@ interface IdeaTemplate {
   types: EventType[];
 }
 
+// Stryker disable StringLiteral: wording of built-in suggestions; tests check their structure and the contracts, not copy
 const IDEA_LIBRARY: IdeaTemplate[] = [
   {
     title: "Marigold and brass courtyard",
@@ -267,6 +269,7 @@ const IDEA_LIBRARY: IdeaTemplate[] = [
     types: ["community", "birthday", "other"],
   },
 ];
+// Stryker restore StringLiteral
 
 export function ideasFallback({ brief, budget }: IdeasRequest): IdeasResult {
   const allocation = new Map(budget.map((l) => [l.category, l.amount]));
@@ -282,15 +285,18 @@ export function ideasFallback({ brief, budget }: IdeasRequest): IdeasResult {
         category: t.category,
         costBreakdown: [
           {
+            // Stryker disable next-line StringLiteral: wording
             item: "Overall estimate",
             min: Math.round((line * t.share[0]) / 100) * 100,
             max: Math.round((line * t.share[1]) / 100) * 100,
           },
         ],
+        // Stryker disable StringLiteral: wording
         assumptions: [
           "A built-in starting point, not personalised to your notes",
           "Range is a share of your current estimate, not a quote",
         ],
+        // Stryker restore StringLiteral
       };
     });
   return { ideas: ideas.map(totalIdeaCost), followUpQuestion: null };
@@ -298,6 +304,7 @@ export function ideasFallback({ brief, budget }: IdeasRequest): IdeasResult {
 
 // --- Vendor brief --------------------------------------------------------------
 
+// Stryker disable StringLiteral: wording of built-in suggestions; tests check their structure and the contracts, not copy
 const VENDOR_SPECIFICS: Partial<Record<CategoryId, { questions: string[]; watchOuts: string[] }>> = {
   venue: {
     questions: [
@@ -329,6 +336,7 @@ const VENDOR_SPECIFICS: Partial<Record<CategoryId, { questions: string[]; watchO
     watchOuts: ["Sound limits or curfews at the venue", "Extra charges for additional hours"],
   },
 };
+// Stryker restore StringLiteral
 
 export function vendorBriefFallback({ category, brief, budgetForCategory }: VendorBriefRequest): VendorBriefResult {
   const specific = VENDOR_SPECIFICS[category] ?? {
@@ -341,6 +349,7 @@ export function vendorBriefFallback({ category, brief, budgetForCategory }: Vend
       `Planned spend around ${formatInr(budgetForCategory)}`,
       ...(brief.notes ? [`Your notes: ${brief.notes.slice(0, 120)}`] : []),
     ],
+    // Stryker disable StringLiteral: wording
     questions: [
       "What exactly is included in the quoted price?",
       ...specific.questions,
@@ -348,6 +357,7 @@ export function vendorBriefFallback({ category, brief, budgetForCategory }: Vend
       "What happens to the price if our guest count changes?",
       "What is the payment schedule, and the cancellation policy?",
     ],
+    // Stryker restore StringLiteral
     watchOuts: specific.watchOuts,
   };
 }
@@ -375,6 +385,7 @@ interface RunSheetStep {
 
 function runSheetSteps(eventType: EventType): RunSheetStep[] {
   // One step per line reads as a timetable.
+  // Stryker disable StringLiteral: wording of built-in suggestions; tests check their structure and the contracts, not copy
   // prettier-ignore
   return [
     { offset: -180, title: "Venue opens for setup", details: "Seating and stage go in; check step-free access.", category: "venue", role: "Venue staff" },
@@ -388,6 +399,7 @@ function runSheetSteps(eventType: EventType): RunSheetStep[] {
     { offset: 240, title: "Send-off", details: "Thank guests and hand out return gifts, if any.", role: "Everyone" },
     { offset: 270, title: "Pack-up and settling up", details: "Pay balances due today and check nothing is left behind.", role: "Hosts" },
   ];
+  // Stryker restore StringLiteral
 }
 
 /** "18:00" plus `offset` minutes, wrapping past midnight. */
@@ -405,10 +417,12 @@ export function runSheetFallback({ brief, startTime, vendors }: RunSheetRequest)
       details: step.details,
       who: (step.category && booked.get(step.category)) || step.role,
     })),
+    // Stryker disable StringLiteral: wording
     reminders: [
       "Share this run sheet with family and every vendor the day before.",
       "Keep vendor phone numbers and any balances due today in one place.",
       "Pack an emergency kit: safety pins, medicines, chargers and cash for tips.",
     ],
+    // Stryker restore StringLiteral
   };
 }
