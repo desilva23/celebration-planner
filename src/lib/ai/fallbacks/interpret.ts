@@ -15,7 +15,7 @@ import {
   type EventType,
 } from "../../domain/schema";
 import type { InterpretRequest, InterpretResult } from "../contracts";
-import { AMOUNT, parseAmount, parseCount } from "../numbers";
+import { AMOUNT, captured, parseAmount, parseCount } from "../numbers";
 
 type Updates = InterpretResult["updates"];
 
@@ -59,8 +59,8 @@ const PRIORITY_KEYWORDS: [RegExp, CategoryId][] = [
   [/\b(outfit|attire|clothes|dress)/, "attire"],
 ];
 
-// Capture groups that a pattern always fills when it matches are asserted
-// with "!"; optional ones (amount units) are passed on as possibly undefined.
+// Groups that always take part in a match are read with captured(); optional
+// ones (amount units) are passed on as possibly undefined.
 const MORE_GUESTS = new RegExp(`${COUNT}\\s+(more|extra|additional|fewer|less)\\s+${PEOPLE}`);
 const GUESTS = new RegExp(`(\\d[\\d,]*)\\s*${PEOPLE}`);
 const BUDGET_SHIFT = new RegExp(
@@ -115,11 +115,11 @@ function readEventType(text: string, brief: EventBrief | null): Reading {
 function guestCountIn(text: string, brief: EventBrief | null): number | null {
   const more = text.match(MORE_GUESTS);
   if (more && brief) {
-    const n = parseCount(more[1]!);
-    return n === null ? null : Math.max(1, brief.guestCount + (/fewer|less/.test(more[2]!) ? -n : n));
+    const n = parseCount(captured(more, 1));
+    return n === null ? null : Math.max(1, brief.guestCount + (/fewer|less/.test(captured(more, 2)) ? -n : n));
   }
   const absolute = text.match(GUESTS);
-  return absolute ? parseCount(absolute[1]!) : null;
+  return absolute ? parseCount(captured(absolute, 1)) : null;
 }
 
 function readGuests(text: string, brief: EventBrief | null): Reading {
@@ -140,13 +140,13 @@ function readGuests(text: string, brief: EventBrief | null): Reading {
 function budgetIn(text: string, brief: EventBrief | null): number | "vague" | null {
   const shift = text.match(BUDGET_SHIFT);
   if (shift && brief) {
-    const delta = parseAmount(shift[2]!, shift[3]);
+    const delta = parseAmount(captured(shift, 2), shift[3]);
     if (delta === null) return null;
-    const down = /dropped|reduced|cut|decreased|fell|down/.test(shift[1]!);
+    const down = /dropped|reduced|cut|decreased|fell|down/.test(captured(shift, 1));
     return Math.max(MIN_BUDGET, brief.totalBudget + (down ? -delta : delta));
   }
   const amount = text.match(BUDGET_SET) ?? text.match(UNIT_AMOUNT);
-  if (amount) return parseAmount(amount[1]!, amount[2]);
+  if (amount) return parseAmount(captured(amount, 1), amount[2]);
   return VAGUE_BUDGET_DROP.test(text) ? "vague" : null;
 }
 
@@ -157,7 +157,7 @@ function readBudget(text: string, brief: EventBrief | null): Reading {
   if (!TotalBudgetSchema.safeParse(totalBudget).success) {
     // A figure under the minimum is more likely a price than a budget, so it is
     // ignored; one over the maximum was meant as a budget and is worth asking about.
-    // Stryker disable next-line EqualityOperator: exactly the maximum is a valid budget, so it never gets here
+    // Exactly the maximum is a valid budget, so it never reaches this point.
     return totalBudget > MAX_BUDGET
       ? { question: `The planner handles budgets up to ${formatInr(MAX_BUDGET)}. What total should it use?` }
       : {};
@@ -174,15 +174,18 @@ function spanDays(count: string, unit: string): number | null {
 /** "two weeks earlier" or "postponed by 10 days", as a count, a unit and a direction. */
 function relativeShift(text: string): { count: string; unit: string; direction: string } | null {
   const spanFirst = text.match(SPAN_FIRST);
-  if (spanFirst) return { count: spanFirst[1]!, unit: spanFirst[2]!, direction: spanFirst[3]! };
+  if (spanFirst)
+    return { count: captured(spanFirst, 1), unit: captured(spanFirst, 2), direction: captured(spanFirst, 3) };
   const verbFirst = text.match(VERB_FIRST);
-  return verbFirst ? { count: verbFirst[2]!, unit: verbFirst[3]!, direction: verbFirst[1]! } : null;
+  return verbFirst
+    ? { count: captured(verbFirst, 2), unit: captured(verbFirst, 3), direction: captured(verbFirst, 1) }
+    : null;
 }
 
 /** An explicit ISO date, or a shift relative to the current date. */
 function dateIn(text: string, brief: EventBrief | null): string | null {
   const iso = text.match(ISO_DATE);
-  if (iso) return iso[1]!;
+  if (iso) return captured(iso, 1);
   const relative = relativeShift(text);
   if (!relative || !brief) return null;
   const days = spanDays(relative.count, relative.unit);
@@ -206,7 +209,7 @@ function readPriorities(text: string): Reading {
   if (!emphasis) return {};
   // Only the clause right before "matters most" counts, not the whole message.
   // One of the two alternatives always matched, so one of these is filled.
-  const clause = (emphasis[1] ?? emphasis[4])!;
+  const clause = emphasis[1] ?? captured(emphasis, 4);
   const phrase = clause.slice(clause.lastIndexOf(",") + 1);
   const priorities = PRIORITY_KEYWORDS.filter(([pattern]) => pattern.test(phrase))
     .map(([, category]) => category)

@@ -3,7 +3,7 @@
 
 import type { z } from "zod";
 import { CATEGORY_META, CATERING_PER_GUEST } from "./assumptions";
-import { allocateBudget, scaleForGuests, setLineAmount, summariseBudget } from "./budget";
+import { allocateBudget, scaleLine, setLineAmount, summariseBudget } from "./budget";
 import { daysBetween } from "./dates";
 import { formatDate, formatInr } from "./format";
 import {
@@ -97,10 +97,10 @@ export function applyChange(plan: Plan, change: PlanChange, today: string, now: 
 function headcountChange(plan: Plan, brief: EventBrief): { budget: BudgetLine[]; effects: ChangeEffect[] } {
   const before = plan.brief;
   if (brief.guestCount === before.guestCount) return { budget: plan.budget, effects: [] };
-  const budget = scaleForGuests(plan.budget, before.guestCount, brief.guestCount);
+  const ratio = brief.guestCount / before.guestCount;
+  const lines = plan.budget.map((old) => ({ old, next: scaleLine(old, ratio) }));
   const effects: ChangeEffect[] = [{ tone: "info", message: `Guests: ${before.guestCount} → ${brief.guestCount}` }];
-  plan.budget.forEach((old, i) => {
-    const next = budget[i]!; // scaleForGuests maps line for line
+  for (const { old, next } of lines) {
     if (next.amount !== old.amount) {
       effects.push({
         tone: "info",
@@ -112,8 +112,8 @@ function headcountChange(plan: Plan, brief: EventBrief): { budget: BudgetLine[];
         message: `${label(old.category)} was confirmed for ${before.guestCount} guests. Ask the vendor to re-quote for ${brief.guestCount}.`,
       });
     }
-  });
-  return { budget, effects };
+  }
+  return { budget: lines.map(({ next }) => next), effects };
 }
 
 /** The budget, experience level and protected categories, each said back when it changed. */
@@ -155,7 +155,7 @@ function dateChange(plan: Plan, brief: EventBrief, today: string): { tasks: Task
   const moved = tasks.filter((t) => t.dueDate !== previousDue.get(t.id)).length;
   effects.push({
     tone: "info",
-    // Stryker disable next-line EqualityOperator: the date changed, so the shift is never 0
+    // The date changed, so the shift is never 0.
     message: `Event moved ${Math.abs(shift)} days ${shift < 0 ? "earlier" : "later"}, to ${formatDate(brief.eventDate)}. ${moved} open tasks rescheduled.`,
   });
 

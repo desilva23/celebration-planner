@@ -27,7 +27,7 @@ export function todayIso(now: Date = new Date()): string {
   return `${now.getFullYear()}-${m}-${d}`;
 }
 
-// Stryker disable EqualityOperator: when the dates are equal, either one is the answer
+// When the two dates are equal, either one is the answer.
 export function laterOf(a: string, b: string): string {
   return a > b ? a : b;
 }
@@ -35,4 +35,3 @@ export function laterOf(a: string, b: string): string {
 export function earlierOf(a: string, b: string): string {
   return a < b ? a : b;
 }
-// Stryker restore EqualityOperator

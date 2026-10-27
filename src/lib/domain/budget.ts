@@ -30,9 +30,14 @@ export function allocateBudget(brief: Pick<EventBrief, "eventType" | "totalBudge
 export function scaleForGuests(lines: BudgetLine[], fromGuests: number, toGuests: number): BudgetLine[] {
   if (fromGuests === toGuests) return lines;
   const ratio = toGuests / fromGuests;
-  return lines.map((line) =>
-    line.scalesWithGuests && line.source === "estimate" ? { ...line, amount: Math.round(line.amount * ratio) } : line,
-  );
+  return lines.map((line) => scaleLine(line, ratio));
+}
+
+/** One line at `ratio` times the headcount: per-guest estimates scale, anything else stays as it is. */
+export function scaleLine(line: BudgetLine, ratio: number): BudgetLine {
+  return line.scalesWithGuests && line.source === "estimate"
+    ? { ...line, amount: Math.round(line.amount * ratio) }
+    : line;
 }
 
 export function setLineAmount(lines: BudgetLine[], category: CategoryId, amount: number): BudgetLine[] {

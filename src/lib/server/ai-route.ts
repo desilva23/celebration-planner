@@ -24,7 +24,7 @@ function fail(status: number, message: string, headers?: Record<string, string>,
  * doesn't declare its size can't make the server buffer an unbounded upload.
  */
 async function readBody(request: Request, limit: number): Promise<string | null> {
-  // Stryker disable next-line StringLiteral: any text that isn't JSON gets the same answer
+  // No body reads as empty text, which then fails as JSON like any other non-JSON text.
   if (!request.body) return "";
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];

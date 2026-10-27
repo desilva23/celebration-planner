@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { numbersMentioned, parseAmount, parseCount } from "./numbers";
+import { captured, numbersMentioned, parseAmount, parseCount } from "./numbers";
 
 describe("parseAmount", () => {
   it.each([
@@ -50,5 +50,15 @@ describe("numbersMentioned", () => {
   it("finds nothing in text without figures, or with digits too long to be a price", () => {
     expect(numbersMentioned("call us for a price").size).toBe(0);
     expect(numbersMentioned("9".repeat(400)).size).toBe(0);
+  });
+});
+
+describe("captured", () => {
+  it("reads a group that took part in the match", () => {
+    expect(captured("8 lakh".match(/(\d+) (lakh)/)!, 2)).toBe("lakh");
+  });
+
+  it("refuses to guess when a group didn't take part", () => {
+    expect(() => captured("b".match(/(a)|(b)/)!, 1)).toThrow("Group 1 of b didn't take part in the match");
   });
 });
