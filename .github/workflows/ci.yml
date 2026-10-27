@@ -27,6 +27,8 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      # Unused files, exports and dependencies.
+      - run: npm run knip
       - run: npm run typecheck
       # Fails if statements, branches, functions or lines drop below 100%.
       - run: npm run test:coverage

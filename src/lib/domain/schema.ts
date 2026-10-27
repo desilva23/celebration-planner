@@ -43,7 +43,7 @@ export const EventBriefSchema = z.object({
  * "estimate" = derived from planning assumptions or AI suggestions.
  * "confirmed" = a price the user has agreed with a real vendor.
  */
-export const CostSourceSchema = z.enum(["estimate", "confirmed"]);
+const CostSourceSchema = z.enum(["estimate", "confirmed"]);
 
 export const BudgetLineSchema = z.object({
   category: CategorySchema,
@@ -52,7 +52,7 @@ export const BudgetLineSchema = z.object({
   source: CostSourceSchema,
 });
 
-export const TaskSchema = z.object({
+const TaskSchema = z.object({
   id: z.string().min(1).max(40),
   title: z.string().min(1).max(120),
   category: z.union([CategorySchema, z.literal("planning")]),
@@ -72,7 +72,7 @@ export const PaymentSchema = z.object({
   paid: z.boolean(),
 });
 
-export const VendorSchema = z.object({
+const VendorSchema = z.object({
   id: z.string().min(1).max(40),
   category: CategorySchema,
   name: z.string().trim().min(1).max(80),
