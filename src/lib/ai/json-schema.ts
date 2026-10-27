@@ -78,19 +78,26 @@ export function fitToSchema(value: unknown, node: Node): unknown {
     const branch = (node.anyOf as Node[]).find((b) => b.type !== "null");
     return branch ? fitToSchema(value, branch) : value;
   }
-  if (typeof value === "string" && typeof node.maxLength === "number") {
-    return value.length > node.maxLength ? `${value.slice(0, node.maxLength - 1).trimEnd()}…` : value;
-  }
-  if (node.type === "integer" && typeof value === "number") return Math.round(value);
-  if (Array.isArray(value)) {
-    const kept = typeof node.maxItems === "number" ? value.slice(0, node.maxItems) : value;
-    return node.items ? kept.map((item) => fitToSchema(item, node.items as Node)) : kept;
-  }
-  if (value && typeof value === "object") {
-    const properties = (node.properties ?? {}) as Record<string, Node>;
-    return Object.fromEntries(
-      Object.entries(value).map(([key, child]) => [key, properties[key] ? fitToSchema(child, properties[key]) : child]),
-    );
-  }
+  if (typeof value === "string") return fitString(value, node);
+  if (typeof value === "number") return node.type === "integer" ? Math.round(value) : value;
+  if (Array.isArray(value)) return fitArray(value, node);
+  if (value && typeof value === "object") return fitObject(value, node);
   return value;
+}
+
+function fitString(value: string, node: Node): string {
+  const max = node.maxLength;
+  return typeof max === "number" && value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
+}
+
+function fitArray(value: unknown[], node: Node): unknown[] {
+  const kept = typeof node.maxItems === "number" ? value.slice(0, node.maxItems) : value;
+  return node.items ? kept.map((item) => fitToSchema(item, node.items as Node)) : kept;
+}
+
+function fitObject(value: object, node: Node): object {
+  const properties = (node.properties ?? {}) as Record<string, Node>;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [key, properties[key] ? fitToSchema(child, properties[key]) : child]),
+  );
 }

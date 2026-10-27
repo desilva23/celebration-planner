@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { calendarFile } from "./calendar";
 import { TODAY, weddingBrief } from "./fixtures.test-helpers";
-import { addPayment, bookVendor, createPlan, setTaskStatus, upsertVendor } from "./plan";
+import { createPlan, setTaskStatus } from "./plan";
+import { addPayment, bookVendor, upsertVendor } from "./vendors";
 import type { Plan } from "./schema";
 
 const NOW = new Date("2026-10-25T06:30:00.000Z");

@@ -9,7 +9,21 @@ export interface EffectsReport {
   summary?: string;
 }
 
-/** Announces what a change did to the plan, wherever on the page it was made. */
+const NOTHING_MOVED = "Nothing else needed to move.";
+
+/** The report as sentences for screen readers, with warnings marked as such. */
+function announcement(report: EffectsReport): string {
+  const details = report.items.length
+    ? report.items.map((item) => (item.tone === "warning" ? `Warning: ${item.message}` : item.message))
+    : [report.summary ?? NOTHING_MOVED];
+  return [report.heading, ...details].map((part) => (/[.!?]$/.test(part) ? part : `${part}.`)).join(" ");
+}
+
+/**
+ * Announces what a change did to the plan, wherever on the page it was made.
+ * Screen readers hear it from a live region that holds only that text; the
+ * visible notice, with its buttons, sits outside the live region.
+ */
 export function EffectsToast({
   report,
   onDismiss,
@@ -21,11 +35,14 @@ export function EffectsToast({
   onUndo?: () => void;
 }) {
   return (
-    <div className="toast-region" role="status" aria-live="polite">
+    <div className="toast-region">
+      <div role="status" className="visually-hidden">
+        {report ? announcement(report) : ""}
+      </div>
       {report && (
-        <div className="toast">
+        <section className="toast" aria-labelledby="toast-heading">
           <div className="toast-head">
-            <h2>{report.heading}</h2>
+            <h2 id="toast-heading">{report.heading}</h2>
             <div className="toast-actions">
               {onUndo && (
                 <button type="button" className="button secondary small" onClick={onUndo}>
@@ -47,9 +64,9 @@ export function EffectsToast({
               ))}
             </ul>
           ) : (
-            <p>{report.summary ?? "Nothing else needed to move."}</p>
+            <p>{report.summary ?? NOTHING_MOVED}</p>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

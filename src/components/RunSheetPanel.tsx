@@ -15,6 +15,15 @@ const USUAL_START: Record<EventType, string> = {
   other: "18:00",
 };
 
+/** The run sheet as plain text, to paste into a message or a document. */
+function runSheetText(title: string, sheet: RunSheetResult): string {
+  return [
+    `${title}: run sheet`,
+    ...sheet.items.map((item) => `${item.time}  ${item.title} (${item.who}). ${item.details}`),
+    ...(sheet.reminders.length ? ["", "Reminders:", ...sheet.reminders.map((r) => `- ${r}`)] : []),
+  ].join("\n");
+}
+
 /** A timetable for the day itself, drafted from the plan and its booked vendors. */
 export function RunSheetPanel({ plan }: { plan: Plan }) {
   const call = useAiCall<RunSheetResult>("/api/run-sheet");
@@ -30,13 +39,8 @@ export function RunSheetPanel({ plan }: { plan: Plan }) {
   }
 
   async function copy(result: RunSheetResult) {
-    const text = [
-      `${plan.brief.title}: run sheet`,
-      ...result.items.map((item) => `${item.time}  ${item.title} (${item.who}). ${item.details}`),
-      ...(result.reminders.length ? ["", "Reminders:", ...result.reminders.map((r) => `- ${r}`)] : []),
-    ].join("\n");
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(runSheetText(plan.brief.title, result));
       setCopied("yes");
     } catch {
       setCopied("failed");
@@ -62,45 +66,13 @@ export function RunSheetPanel({ plan }: { plan: Plan }) {
           {call.loading ? "Drafting…" : sheet ? "Draft again" : "Draft a run sheet"}
         </button>
       </form>
-      <div aria-live="polite">
+      <div aria-live="polite" aria-busy={call.loading}>
         {call.error && <ErrorMessage>{call.error}</ErrorMessage>}
         {call.envelope && sheet && (
           <>
             <Provenance envelope={call.envelope} />
-            <div className="table-wrap">
-              <table>
-                <caption>Run sheet for {plan.brief.title}</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Time</th>
-                    <th scope="col">What</th>
-                    <th scope="col">Who</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sheet.items.map((item, i) => (
-                    <tr key={i}>
-                      <td>{item.time}</td>
-                      <th scope="row">
-                        {item.title}
-                        <span className="hint block">{item.details}</span>
-                      </th>
-                      <td>{item.who}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {sheet.reminders.length > 0 && (
-              <>
-                <h3>Reminders</h3>
-                <ul>
-                  {sheet.reminders.map((reminder, i) => (
-                    <li key={i}>{reminder}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+            <RunSheetTable title={plan.brief.title} sheet={sheet} />
+            <Reminders reminders={sheet.reminders} />
             <button type="button" className="button ghost small" onClick={() => void copy(sheet)}>
               Copy as text
             </button>
@@ -112,5 +84,48 @@ export function RunSheetPanel({ plan }: { plan: Plan }) {
         )}
       </div>
     </Section>
+  );
+}
+
+function RunSheetTable({ title, sheet }: { title: string; sheet: RunSheetResult }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <caption>Run sheet for {title}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            <th scope="col">What</th>
+            <th scope="col">Who</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sheet.items.map((item, i) => (
+            <tr key={i}>
+              <td>{item.time}</td>
+              <th scope="row">
+                {item.title}
+                <span className="hint block">{item.details}</span>
+              </th>
+              <td>{item.who}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Reminders({ reminders }: { reminders: string[] }) {
+  if (reminders.length === 0) return null;
+  return (
+    <>
+      <h3>Reminders</h3>
+      <ul>
+        {reminders.map((reminder, i) => (
+          <li key={i}>{reminder}</li>
+        ))}
+      </ul>
+    </>
   );
 }

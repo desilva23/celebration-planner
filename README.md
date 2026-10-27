@@ -141,7 +141,7 @@ The brief asks for help with budgets, timelines, vendor checklists and personali
 
 ### Code quality
 
-Strict TypeScript, including `noUncheckedIndexedAccess`, `noUnusedLocals` and `noUnusedParameters`. ESLint (Next.js, React Hooks, jsx-a11y and type-aware TypeScript rules) allows no warnings, Prettier formats everything, and Knip fails the build on unused files, exports or dependencies. A jscpd scan finds no duplicated code. The plan engine (`src/lib/domain`) is pure and framework-free; the same Zod contracts validate requests, describe the JSON the model must return, and check what it did return.
+Strict TypeScript, including `noUncheckedIndexedAccess`, `noUnusedLocals` and `noUnusedParameters`. ESLint (Next.js, React Hooks, jsx-a11y and type-aware TypeScript rules) allows no warnings and keeps every unit small: cyclomatic complexity at most 10, functions at most 80 lines, files at most 300, nesting at most 3 deep and at most 4 parameters. Prettier formats everything, and Knip fails the build on unused files, exports or dependencies. A jscpd scan finds no duplicated code. The plan engine (`src/lib/domain`) is pure and framework-free; the same Zod contracts validate requests, describe the JSON the model must return, and check what it did return.
 
 Every plan operation checks its result against the same schema used to load saved plans, so no change can store a plan that would fail to load next time. Out-of-range input is refused with a plain-language reason instead. A saved plan that still can't be read, such as one saved by a different version, is set aside rather than discarded, and the user is offered a download. If the page fails to render, an error screen offers to try again or to start over with the plan kept.
 

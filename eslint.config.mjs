@@ -38,6 +38,24 @@ export default defineConfig([
     rules: { "@typescript-eslint/no-restricted-imports": "off" },
   },
   {
+    // Keep every unit small enough to read in one go.
+    files: ["**/*.{ts,tsx,mts}"],
+    rules: {
+      complexity: ["error", 10],
+      "max-depth": ["error", 3],
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}", "**/*.test-helpers.ts", "src/test/**"],
+    rules: {
+      "max-params": ["error", 4],
+      "max-nested-callbacks": ["error", 3],
+      "max-lines-per-function": ["error", { max: 80, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
     files: ["**/*.test.{ts,tsx}", "src/test/**"],
     rules: {
       // Mocks and `Response.json()` are untyped by nature.

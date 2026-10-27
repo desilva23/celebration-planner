@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { addGuest } from "@/lib/domain/plan";
+import { addGuest } from "@/lib/domain/guests";
 import type { Guest, Plan } from "@/lib/domain/schema";
 import { axeViolations } from "@/test/axe";
 import { panelProps, weddingPlan } from "@/test/plan";

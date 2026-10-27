@@ -1,7 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { addPayment, applyChange, bookVendor, setBudgetAmount, upsertVendor } from "@/lib/domain/plan";
+import { applyChange, setBudgetAmount } from "@/lib/domain/plan";
+import { addPayment, bookVendor, upsertVendor } from "@/lib/domain/vendors";
 import type { Plan } from "@/lib/domain/schema";
 import { TODAY } from "@/lib/domain/fixtures.test-helpers";
 import { axeViolations } from "@/test/axe";

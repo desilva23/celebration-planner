@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axeViolations } from "@/test/axe";
@@ -24,13 +24,27 @@ describe("EffectsToast", () => {
         onDismiss={onDismiss}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Plan revised" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Plan revised" })).toBeInTheDocument();
     expect(screen.getByText("Guests: 200 → 250")).toHaveTextContent(/^Guests: 200 → 250$/);
     expect(screen.getByText("The plan is now ₹1,50,000 over budget.")).toHaveTextContent(/^Warning: The plan/);
     expect(await axeViolations(container)).toEqual([]);
 
     await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it("gives screen readers the whole report as text, and keeps its buttons out of the live region", () => {
+    const report = {
+      heading: "Plan revised",
+      items: [
+        { tone: "info" as const, message: "Guests: 200 → 250" },
+        { tone: "warning" as const, message: "The plan is now ₹1,50,000 over budget." },
+      ],
+    };
+    render(<EffectsToast report={report} onDismiss={vi.fn()} onUndo={vi.fn()} />);
+    const live = screen.getByRole("status");
+    expect(live).toHaveTextContent("Plan revised. Guests: 200 → 250. Warning: The plan is now ₹1,50,000 over budget.");
+    expect(within(live).queryAllByRole("button")).toEqual([]);
   });
 
   it("says so when nothing else needed to move", () => {

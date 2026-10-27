@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type SubmitEvent } from "react";
-import type { InterpretResult } from "@/lib/ai/contracts";
+import type { AiEnvelope, InterpretResult } from "@/lib/ai/contracts";
 import { useAiCall } from "@/lib/client/api";
 import { addDays } from "@/lib/domain/dates";
 import { formatDate, formatInr } from "@/lib/domain/format";
@@ -11,6 +11,7 @@ import {
   MAX_GUESTS,
   MIN_BUDGET,
   TIERS,
+  type CategoryId,
   type EventBrief,
   type PlanChange,
   type Tier,
@@ -26,10 +27,13 @@ function toChange(updates: InterpretResult["updates"], brief: EventBrief): PlanC
     change.totalBudget = updates.totalBudget;
   if (updates.eventDate !== null && updates.eventDate !== brief.eventDate) change.eventDate = updates.eventDate;
   if (updates.tier !== null && updates.tier !== brief.tier) change.tier = updates.tier;
-  if (updates.priorities !== null && updates.priorities.join() !== brief.priorities.join()) {
-    change.priorities = updates.priorities;
-  }
+  const priorities = changedPriorities(updates.priorities, brief.priorities);
+  if (priorities) change.priorities = priorities;
   return change;
+}
+
+function changedPriorities(next: CategoryId[] | null, current: CategoryId[]): CategoryId[] | null {
+  return next !== null && next.join() !== current.join() ? next : null;
 }
 
 function describe(change: PlanChange, brief: EventBrief): string[] {
@@ -57,7 +61,6 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
     interpret.envelope && !interpret.loading && !interpret.error
       ? toChange(interpret.envelope.data.updates, plan.brief)
       : null;
-  const rows = proposal ? describe(proposal, plan.brief) : [];
 
   function apply(change: PlanChange): boolean {
     try {
@@ -68,6 +71,12 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
       setApplyError(error instanceof PlanError ? error.message : "That change couldn't be applied.");
       return false;
     }
+  }
+
+  function applyProposal(change: PlanChange) {
+    if (!apply(change)) return;
+    interpret.reset();
+    setMessage("");
   }
 
   async function preview(event: SubmitEvent) {
@@ -97,44 +106,16 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
         </button>
       </form>
 
-      <div aria-live="polite">
+      <div aria-live="polite" aria-busy={interpret.loading}>
         {interpret.error && <ErrorMessage>{interpret.error}</ErrorMessage>}
         {applyError && <ErrorMessage>{applyError}</ErrorMessage>}
         {interpret.envelope && proposal && (
-          <div className="proposal">
-            <Provenance envelope={interpret.envelope} />
-            <p>{interpret.envelope.data.understood}</p>
-            {interpret.envelope.data.clarifyingQuestion && (
-              <p className="callout info">{interpret.envelope.data.clarifyingQuestion}</p>
-            )}
-            {rows.length > 0 ? (
-              <>
-                <ul className="diff">
-                  {rows.map((row) => (
-                    <li key={row}>{row}</li>
-                  ))}
-                </ul>
-                <div className="actions">
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() => {
-                      if (!apply(proposal)) return;
-                      interpret.reset();
-                      setMessage("");
-                    }}
-                  >
-                    Apply to my plan
-                  </button>
-                  <button type="button" className="button ghost" onClick={interpret.reset}>
-                    Discard
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p className="hint">Nothing to change in the plan yet.</p>
-            )}
-          </div>
+          <Proposal
+            envelope={interpret.envelope}
+            rows={describe(proposal, plan.brief)}
+            onApply={() => applyProposal(proposal)}
+            onDiscard={interpret.reset}
+          />
         )}
       </div>
 
@@ -143,6 +124,46 @@ export function ChangePanel({ plan, today, onUpdate }: PanelProps) {
         <ManualEdit key={plan.updatedAt} brief={plan.brief} today={today} onApply={apply} />
       </details>
     </Section>
+  );
+}
+
+/** What the message was understood to mean, and the changes it would make, to confirm or discard. */
+function Proposal({
+  envelope,
+  rows,
+  onApply,
+  onDiscard,
+}: {
+  envelope: AiEnvelope<InterpretResult>;
+  rows: string[];
+  onApply: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <div className="proposal">
+      <Provenance envelope={envelope} />
+      <p>{envelope.data.understood}</p>
+      {envelope.data.clarifyingQuestion && <p className="callout info">{envelope.data.clarifyingQuestion}</p>}
+      {rows.length > 0 ? (
+        <>
+          <ul className="diff">
+            {rows.map((row) => (
+              <li key={row}>{row}</li>
+            ))}
+          </ul>
+          <div className="actions">
+            <button type="button" className="button primary" onClick={onApply}>
+              Apply to my plan
+            </button>
+            <button type="button" className="button ghost" onClick={onDiscard}>
+              Discard
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="hint">Nothing to change in the plan yet.</p>
+      )}
+    </div>
   );
 }
 
