@@ -5,6 +5,7 @@ import { downloadFile } from "@/lib/client/plan-file";
 import { discardSetAsidePlan, savePlan, setAsideSavedPlan, usePlan, useSetAsidePlan } from "@/lib/client/plan-store";
 import { planFromLink } from "@/lib/client/share";
 import type { Plan } from "@/lib/domain/schema";
+import { ConfirmButton } from "./ConfirmButton";
 import { IntakeForm } from "./IntakeForm";
 import { PlanDashboard } from "./PlanDashboard";
 import { OpenPlanFile } from "./PlanSharing";
@@ -40,10 +41,6 @@ export function PlannerApp({ aiProvider }: { aiProvider: string | null }) {
     });
   }
 
-  function startOver() {
-    if (window.confirm("Start a new plan? This removes the current plan from this browser.")) show(null);
-  }
-
   return (
     <>
       <header className="site-header">
@@ -53,9 +50,15 @@ export function PlannerApp({ aiProvider }: { aiProvider: string | null }) {
             {aiProvider ? `AI assistant on (${aiProvider})` : "AI off, using built-in suggestions"}
           </span>
           {plan && (
-            <button type="button" className="button ghost" onClick={startOver}>
-              New plan
-            </button>
+            <ConfirmButton
+              label="New plan"
+              className="button ghost"
+              question="Start a new plan?"
+              detail="This removes the current plan from this browser. Download it first if you want to keep a copy."
+              confirmLabel="Start a new plan"
+              cancelLabel="Keep this plan"
+              onConfirm={() => show(null)}
+            />
           )}
         </div>
       </header>
@@ -96,13 +99,10 @@ export function PlannerApp({ aiProvider }: { aiProvider: string | null }) {
 
 /** A plan that couldn't be shown is kept aside, never dropped silently. */
 function SetAsideNotice({ text }: { text: string }) {
-  function remove() {
-    if (window.confirm("Remove the copy of your previous plan? This can't be undone.")) discardSetAsidePlan();
-  }
-
   return (
-    <div className="callout warning" role="status">
-      <p>
+    <div className="callout warning">
+      {/* Only the message is a live region; the question below announces itself. */}
+      <p role="status">
         <strong>Your previous plan was set aside.</strong> It couldn’t be shown, perhaps because a different version of
         the planner saved it. A copy is kept in this browser.
       </p>
@@ -114,9 +114,15 @@ function SetAsideNotice({ text }: { text: string }) {
         >
           Download the copy
         </button>
-        <button type="button" className="button ghost" onClick={remove}>
-          Remove the copy
-        </button>
+        <ConfirmButton
+          label="Remove the copy"
+          className="button ghost"
+          question="Remove the copy of your previous plan?"
+          detail="This can't be undone."
+          confirmLabel="Remove it"
+          cancelLabel="Keep the copy"
+          onConfirm={discardSetAsidePlan}
+        />
       </div>
     </div>
   );

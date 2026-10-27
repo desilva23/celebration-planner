@@ -85,6 +85,13 @@ for (const colorScheme of ["light", "dark"] as const) {
       await busyPlan(page);
       expect(await axeViolations(page)).toEqual([]);
     });
+
+    test("the question before starting over", async ({ page }) => {
+      await createPlan(page);
+      await page.getByRole("button", { name: "New plan" }).click();
+      await expect(page.getByRole("alertdialog")).toBeVisible();
+      expect(await axeViolations(page)).toEqual([]);
+    });
   });
 }
 

@@ -101,3 +101,27 @@ test("downloads the plan and its dates, and opens the plan file on another devic
   expect(errors).toEqual([]);
   await elsewhere.close();
 });
+
+test("asks before starting over, and keeps focus with the question until it is answered", async ({ page }) => {
+  await createPlan(page);
+  const newPlan = page.getByRole("button", { name: "New plan" });
+  const dialog = page.getByRole("alertdialog", { name: "Start a new plan?" });
+
+  // The safe answer has focus.
+  await newPlan.click();
+  await expect(dialog.getByRole("button", { name: "Keep this plan" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByRole("button", { name: "Start a new plan" })).toBeFocused();
+  // The page behind can't be clicked while the question is open.
+  await expect(newPlan.click({ trial: true, timeout: 500 })).rejects.toThrow();
+
+  // Escape keeps the plan and puts focus back on the button that asked.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(newPlan).toBeFocused();
+  await expect(page.getByRole("heading", { level: 1, name: TITLE })).toBeVisible();
+
+  await newPlan.click();
+  await dialog.getByRole("button", { name: "Start a new plan" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: /survives real life/ })).toBeVisible();
+});

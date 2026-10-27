@@ -197,7 +197,7 @@ CI (`.github/workflows/ci.yml`) runs formatting, lint, Knip, typecheck, tests wi
 
 ### Accessibility
 
-Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 320px (WCAG reflow). Contrast and reflow are checked in a real browser on every push. Lighthouse scores Accessibility 100 on mobile and desktop.
+Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, an in-page dialog that asks before anything that can't be undone (it holds focus until answered, Escape keeps the plan, and focus returns to the button), visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 320px (WCAG reflow). Contrast and reflow are checked in a real browser on every push. Lighthouse scores Accessibility 100 on mobile and desktop.
 
 ## Limitations
 

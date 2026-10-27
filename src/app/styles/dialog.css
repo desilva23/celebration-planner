@@ -1,0 +1,24 @@
+/* Confirmation dialogs */
+
+.dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.25);
+}
+
+.dialog h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.dialog p {
+  margin: 0 0 1rem;
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}

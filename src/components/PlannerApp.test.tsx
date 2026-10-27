@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
@@ -34,15 +34,20 @@ describe("a plan that was set aside", () => {
   });
 
   it("is only removed after the user confirms", async () => {
+    const user = userEvent.setup();
     savePlan(weddingPlan());
     setAsideSavedPlan();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     render(<PlannerApp aiProvider={null} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Remove the copy" }));
-    expect(confirm).toHaveBeenCalledWith("Remove the copy of your previous plan? This can't be undone.");
+    await user.click(screen.getByRole("button", { name: "Remove the copy" }));
+    const dialog = screen.getByRole("alertdialog", { name: "Remove the copy of your previous plan?" });
+    expect(dialog).toHaveAccessibleDescription("This can't be undone.");
+    await user.click(within(dialog).getByRole("button", { name: "Keep the copy" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByText(/previous plan was set aside/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Remove the copy" }));
+
+    await user.click(screen.getByRole("button", { name: "Remove the copy" }));
+    await user.click(screen.getByRole("button", { name: "Remove it" }));
     expect(screen.queryByText(/previous plan was set aside/)).not.toBeInTheDocument();
   });
 });
@@ -136,14 +141,17 @@ describe("PlannerApp", () => {
   it("only starts over once the user confirms", async () => {
     const user = userEvent.setup();
     savePlan(weddingPlan({ title: "Anu & Ravi's wedding" }));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     render(<PlannerApp aiProvider={null} />);
 
     await user.click(screen.getByRole("button", { name: "New plan" }));
-    expect(confirm).toHaveBeenCalledWith("Start a new plan? This removes the current plan from this browser.");
+    expect(screen.getByRole("alertdialog", { name: "Start a new plan?" })).toHaveAccessibleDescription(
+      "This removes the current plan from this browser. Download it first if you want to keep a copy.",
+    );
+    await user.click(screen.getByRole("button", { name: "Keep this plan" }));
     expect(screen.getByRole("heading", { level: 1, name: "Anu & Ravi's wedding" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "New plan" }));
+    await user.click(screen.getByRole("button", { name: "Start a new plan" }));
     expect(await screen.findByRole("heading", { level: 1, name: /survives real life/ })).toBeInTheDocument();
     expect(localStorage.length).toBe(0);
   });
