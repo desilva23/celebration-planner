@@ -16,4 +16,4 @@ The details are in the README under [Security](README.md#security). In short:
 - Every request is checked for origin, rate-limited per client, size-capped while it is read, and validated against a schema.
 - Pages run under a Content-Security-Policy with a fresh nonce per request, so injected scripts don't run.
 - Text people type is fenced as data in prompts, and model replies are schema-checked before use.
-- CodeQL scans every push and pull request, and Dependabot proposes dependency updates weekly.
+- CodeQL scans every push, and Dependabot alerts flag any dependency with a known vulnerability.

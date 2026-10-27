@@ -6,13 +6,30 @@
 
 A GenAI planning assistant for weddings, birthdays and community events. It builds a budget, a schedule in the right order and a vendor checklist from a short brief. When something changes, it **revises the plan instead of starting over**.
 
-> PromptWars Virtual, Challenge 5: Celebration & Event Planner
+## Chosen vertical
 
-## Who it's for
+**PromptWars Virtual, Challenge 5: Celebration & Event Planner.**
 
-Families planning a celebration on a fixed budget, where the plan keeps moving. The guest list grows, the budget shrinks, the date shifts, a vendor's quote comes in higher than expected. Planning isn't one problem. It's a set of connected ones, and a change in one place has knock-on effects everywhere else. This app keeps those pieces in sync.
+The persona is a family planning a celebration on a fixed budget, where the plan keeps moving. The guest list grows, the budget shrinks, the date shifts, a vendor's quote comes in higher than expected. Planning isn't one problem. It's a set of connected ones, and a change in one place has knock-on effects everywhere else. This assistant keeps those pieces in sync.
 
-## Try the core scenario
+## Approach and logic
+
+The design rule is **AI proposes, the engine does the maths.** Language understanding and creative work go to an LLM; anything that has to be correct every time (budgets, schedules, trade-offs) is deterministic, tested TypeScript that runs in the browser.
+
+Every decision comes from the user's own context, and the user is told why:
+
+- **Occasion and experience level** set the budget split (weights per event type) and the per-guest catering cost it's checked against.
+- **Headcount** rescales the per-guest lines, but never a price already agreed with a vendor: that gets a "ask them to re-quote" warning instead.
+- **Event date** schedules every task backwards from the day, in dependency order. With less time than the occasion ideally needs, the schedule is compressed and tasks due within a week are flagged.
+- **Priorities** are protected first whenever the plan has to be cut.
+- **Over budget**, the assistant offers four concrete trade-offs, each listing exactly what it costs; any that can't close the gap say so.
+- **Vague or out-of-range input** gets a clarifying question or a plain-language refusal, never a guess.
+- **Bookings** confirm a price and complete the matching task; cancelling one reverses both.
+- **Replies from guests** suggest a new headcount when they no longer match the plan.
+
+## How the solution works
+
+### Try the core scenario
 
 1. Create a plan: a wedding, 200 guests, ₹8,00,000, about four months out, with food and photography as priorities.
 2. In **Something changed?**, type: *"We now have 50 more guests, the budget dropped by 80k, and it's two weeks earlier."*
@@ -23,7 +40,7 @@ Families planning a celebration on a fixed budget, where the plan keeps moving. 
    - finished tasks and booked vendors are untouched
 4. Choose a trade-off. Every reported change can be undone from the notice that reports it, as long as nothing has changed since.
 
-## What it does
+### What it does
 
 | Brief requirement | How it's handled |
 | --- | --- |
@@ -36,9 +53,9 @@ Families planning a celebration on a fixed budget, where the plan keeps moving. 
 | **Personalised ideas** | Concepts grounded in guest ages, culture, dietary and accessibility notes, each sized against your own budget line. Push back ("too expensive", "needs to work for kids and grandparents") and they're reworked. |
 | **Keeping a plan** | Download the plan as a file and open it on another device, share a link that opens a copy (without the guest list, which names real people), or add the event day, task deadlines and unpaid payments to a calendar (.ics). |
 
-## How GenAI is used, and where it isn't
+### How GenAI is used, and where it isn't
 
-The design rule is **AI proposes, the engine does the maths.** Language understanding and creative work go to an LLM. Arithmetic, scheduling and anything that has to be correct every time is deterministic TypeScript, tested and run in the browser with no API cost.
+The model handles language and ideas; arithmetic and scheduling never reach it, so they cost nothing and can't be hallucinated.
 
 | Feature | Model tier | What the model does |
 | --- | --- | --- |
@@ -57,7 +74,7 @@ Two providers are supported behind one interface (`src/lib/ai/llm.ts`). Whicheve
 
 All model output is requested as JSON against a schema derived from the same Zod contracts that validate requests. Providers accept different schema keywords, so length and format limits are sent as plain-language hints. The reply is trimmed to those limits and **re-validated with Zod** before use.
 
-### Honesty guardrails
+#### Honesty guardrails
 
 - Budget figures from planning assumptions or AI are always marked **Estimate**. Only a price the user records from a real vendor becomes **Confirmed**, and confirmed prices are never rescaled or cut automatically.
 - The model is instructed never to invent vendors, contact details, availability or prices.
@@ -65,11 +82,11 @@ All model output is requested as JSON against a schema derived from the same Zod
 - Quote comparison **drops any figure that doesn't appear in the quote text** and tells the user to confirm it (`src/lib/ai/guards.ts`). Totals calculated from per-guest prices are labelled "calculated".
 - Every AI result is labelled **AI suggestion** or **Built-in suggestion**.
 
-### Works without a key
+#### Works without a key
 
 With no provider key, the interpreter, ideas, vendor questions and run sheet fall back to deterministic built-ins (clearly labelled), so the whole budget, timeline and replanning flow still works. Quote comparison is the one feature that refuses rather than guesses.
 
-## Architecture
+### Architecture
 
 ```mermaid
 flowchart LR
@@ -92,6 +109,17 @@ src/
   proxy.ts             Per-request Content-Security-Policy nonce
 e2e/                   Browser tests (Playwright) against the production server
 ```
+
+## Assumptions
+
+- **Indian context.** Amounts are in rupees with lakh and crore grouping, and suggestions reflect Indian celebrations (vegetarian and Jain food, marigold decor, return gifts).
+- **Starting figures are estimates.** Budget weights per occasion and per-guest catering costs per experience level are illustrative starting points (`src/lib/domain/assumptions.ts`), not market data, and are always labelled **Estimate**.
+- **Ideal planning time** is 120 days for a wedding, 45 for an anniversary or other occasion, 60 for a community event and 30 for a birthday. Less time than that compresses the schedule.
+- **Only catering and invitations scale with headcount.** Venue, decor, photography and the rest are treated as fixed costs.
+- **Vendors and prices come from the user.** The assistant never invents businesses, prices or availability, and only a price the user records counts as confirmed.
+- **The user confirms every change** the AI proposes before it touches the plan.
+- **A plan belongs to one browser.** There are no accounts; a copy travels as a file or a link.
+- **Dates are calendar days** in the user's own time zone; run-sheet times use the 24-hour clock.
 
 ## Running it
 
@@ -117,7 +145,7 @@ npm run dev                  # http://localhost:3000
 
 ### Deploying to Vercel
 
-The repository is connected to a Vercel project: every push to `main` deploys to production and every pull request gets a preview deployment. `main` only takes changes whose CI checks have passed.
+The repository is connected to a Vercel project, and every push to `main` deploys to production. All work happens on that one branch, and CI checks every push.
 
 In the project's settings, add environment variables for Production (and Preview, if previews should use AI too):
 
@@ -149,7 +177,7 @@ Every plan operation checks its result against the same schema used to load save
 
 API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts, event handlers and styles never run, plus other security headers. Nothing needs `eval`: Zod is configured not to compile parsers with it (`src/lib/zod.ts`). Share links carry the plan in the URL fragment, which browsers never send to a server. User content is never logged.
 
-CodeQL scans every push and pull request, Dependabot proposes updates weekly, `npm audit` reports no vulnerabilities, and [SECURITY.md](SECURITY.md) explains how to report a problem privately.
+CodeQL scans every push, Dependabot alerts flag any dependency with a known vulnerability, `npm audit` reports none, and [SECURITY.md](SECURITY.md) explains how to report a problem privately.
 
 ### Efficiency
 
@@ -165,17 +193,16 @@ Browser tests (`e2e/`, Playwright) run the production build in Chromium with AI 
 
 Coverage only shows that code ran. Mutation testing (`stryker.config.mjs`) shows whether the tests would notice if it were wrong: Stryker makes thousands of small changes to `src/lib`, such as flipping a comparison, and checks that a test fails for each. It scores over 99%, and the run fails below 97%. The report the workflow uploads shows every mutant that survives.
 
-CI (`.github/workflows/ci.yml`) runs formatting, lint, Knip, typecheck, tests with coverage, a production build and the browser tests on every push and pull request, and `main` only accepts changes that pass. Mutation testing runs weekly (`mutation.yml`), and Dependabot proposes dependency and action updates every week.
+CI (`.github/workflows/ci.yml`) runs formatting, lint, Knip, typecheck, tests with coverage, a production build and the browser tests on every push. Mutation testing runs weekly (`mutation.yml`).
 
 ### Accessibility
 
-Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 320px (WCAG reflow). Contrast and reflow are checked in a real browser on every pull request. Lighthouse scores Accessibility 100 on mobile and desktop.
+Semantic landmarks and headings, a skip link, labelled controls, fieldsets for grouped choices, an error summary that receives focus, live regions for AI results and plan changes, visible focus rings, 44px touch targets, status shown in text (not colour alone), WCAG AA contrast in light and dark themes, and no horizontal scrolling at 320px (WCAG reflow). Contrast and reflow are checked in a real browser on every push. Lighthouse scores Accessibility 100 on mobile and desktop.
 
 ## Limitations
 
 - There are no accounts. A plan lives in the browser that made it; it can be downloaded, opened elsewhere or shared as a link, but copies don't stay in sync.
 - The rate limiter and cache are per server instance unless Upstash Redis is configured, which shares them across instances. If Redis is unreachable, requests are still served and the failure is logged.
-- Budget weights and per-guest assumptions are illustrative starting points (`src/lib/domain/assumptions.ts`), not market data.
 
 ## License
 
