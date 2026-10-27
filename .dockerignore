@@ -9,3 +9,5 @@ Dockerfile
 .dockerignore
 playwright-report
 test-results
+.stryker-tmp
+reports

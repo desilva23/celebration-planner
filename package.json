@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "test:mutation": "stryker run"
   },
   "engines": {
     "node": ">=22.12"
@@ -31,6 +32,9 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.64.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/typescript-checker": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -48,5 +52,10 @@
     "typescript-eslint": "^8.72.0",
     "vitest": "^5.0.5"
   },
-  "description": "A GenAI celebration and event planner that keeps budgets, schedules and vendors in sync when plans change."
+  "description": "A GenAI celebration and event planner that keeps budgets, schedules and vendors in sync when plans change.",
+  "overrides": {
+    "typed-rest-client": {
+      "qs": "^6.16.0"
+    }
+  }
 }
