@@ -19,7 +19,7 @@
     "test:mutation": "stryker run"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": "22.x"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
