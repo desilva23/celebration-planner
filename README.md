@@ -153,7 +153,7 @@ In the project's settings, add environment variables for Production (and Preview
 | --- | --- | --- |
 | `GEMINI_API_KEY` or `GROQ_API_KEY` | For AI features | Without one, the built-in suggestions are used. Keys are only read on the server. |
 | `AI_PROVIDER` | Only if both keys are set | `gemini` or `groq` |
-| Upstash Redis | Recommended | Install **Upstash for Redis** from the Vercel Marketplace and connect it to the project. Its `KV_REST_API_URL` and `KV_REST_API_TOKEN` are picked up automatically (or set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`). Without it, the rate limit and cache are per function instance, which on Vercel are many and short-lived. |
+| Upstash Redis | Recommended | Install **Upstash for Redis** from the Vercel Marketplace and connect it to the project. Its `KV_REST_API_URL` and `KV_REST_API_TOKEN` are picked up automatically (or set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`). Without it, the rate limit and cache are per function instance, which on Vercel are many and short-lived. The live deployment uses it. |
 
 Leave `TRUSTED_PROXY_HOPS` unset: Vercel replaces `X-Forwarded-For` with the client's address, so the default of 1 is right. Functions run in Mumbai (`bom1`, set in `vercel.json`), close to the people the planner is for; change it there if your users are elsewhere. The Node version comes from `engines` in `package.json` (22.x), the same as CI.
 
@@ -175,13 +175,13 @@ Every plan operation checks its result against the same schema used to load save
 
 ### Security
 
-API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts, event handlers and styles never run, plus other security headers. Nothing needs `eval`: Zod is configured not to compile parsers with it (`src/lib/zod.ts`). Share links carry the plan in the URL fragment, which browsers never send to a server. User content is never logged.
+API keys are server-only (`server-only` import, never `NEXT_PUBLIC_`). Every request body is size-capped while it is read, so even an upload that never states its size stops at 32 KB, and is validated with Zod. Cross-site browser requests are refused, and each client is rate-limited by the address your own proxy recorded, not one the client can forge (`TRUSTED_PROXY_HOPS`). In production the counts live in Upstash Redis, shared by every server instance, so the limit holds however many instances are running; addresses are hashed before they are stored. User text is fenced as data in prompts, and model output is schema-checked. Pages get a strict Content-Security-Policy with a fresh nonce on every request (`src/proxy.ts`), so injected inline scripts, event handlers and styles never run, plus other security headers. Nothing needs `eval`: Zod is configured not to compile parsers with it (`src/lib/zod.ts`). Share links carry the plan in the URL fragment, which browsers never send to a server. User content is never logged.
 
 CodeQL scans every push, Dependabot alerts flag any dependency with a known vulnerability, `npm audit` reports none, and [SECURITY.md](SECURITY.md) explains how to report a problem privately.
 
 ### Efficiency
 
-Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes, in memory or in Upstash Redis when it is configured. Calls time out at 20–30 seconds, and only malformed replies are retried, once.
+Budget, scheduling and replanning run client-side with zero API calls. The model is only called on an explicit action. Extraction uses the lite model and generation uses the larger one. Identical requests are cached for 10 minutes in Upstash Redis, so an answer one server instance fetched is reused by all of them (in memory where Redis isn't configured, such as locally). Calls time out at 20–30 seconds, and only malformed replies are retried, once.
 
 Lighthouse on the live site scores Performance 96 on throttled mobile and 100 on desktop, with Largest Contentful Paint at 2.2 s and 0.5 s and no layout shift.
 
@@ -202,7 +202,7 @@ Semantic landmarks and headings, a skip link, labelled controls, fieldsets for g
 ## Limitations
 
 - There are no accounts. A plan lives in the browser that made it; it can be downloaded, opened elsewhere or shared as a link, but copies don't stay in sync.
-- The rate limiter and cache are per server instance unless Upstash Redis is configured, which shares them across instances. If Redis is unreachable, requests are still served and the failure is logged.
+- Without Upstash Redis, such as when running locally, the rate limiter and cache are per server instance. If Redis is unreachable, requests are still served rather than refused, and the failure is logged.
 
 ## License
 
