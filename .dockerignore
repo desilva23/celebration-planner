@@ -7,3 +7,5 @@ coverage
 *.tsbuildinfo
 Dockerfile
 .dockerignore
+playwright-report
+test-results
