@@ -15,11 +15,20 @@ const WORD_NUMBERS: Record<string, number> = {
 
 export const AMOUNT = String.raw`(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|cr|k|l)?\b`;
 
+/**
+ * A capture group that always takes part when its pattern matches. Throws
+ * rather than guessing if that ever stops being true.
+ */
+export function captured(match: RegExpMatchArray, index: number): string {
+  const value = match[index];
+  if (value === undefined) throw new Error(`Group ${index} of ${String(match[0])} didn't take part in the match`);
+  return value;
+}
+
 /** "2.5", "lakh" → 250000. Handles Indian digit grouping ("2,50,000"). */
 export function parseAmount(digits: string, unit?: string): number | null {
   const value = Number(digits.replace(/,/g, ""));
   if (!Number.isFinite(value)) return null;
-  // Stryker disable next-line Regex: every unit ends in its only "s"
   const multiplier = unit ? (UNIT_MULTIPLIER[unit.toLowerCase().replace(/s$/, "")] ?? 1) : 1;
   return Math.round(value * multiplier);
 }
@@ -36,7 +45,7 @@ export function parseCount(raw: string): number | null {
 export function numbersMentioned(text: string): Set<number> {
   const found = new Set<number>();
   for (const match of text.matchAll(new RegExp(AMOUNT, "gi"))) {
-    const digits = match[1]!; // AMOUNT always captures the digits; the unit is optional.
+    const digits = captured(match, 1); // The unit is optional; the digits aren't.
     // Null only when the digits overflow, in which case there is nothing to record.
     const expanded = parseAmount(digits, match[2]);
     if (expanded === null) continue;

@@ -1,0 +1,75 @@
+/* Vendors */
+
+.vendor {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.vendor .badge {
+  margin-left: 0.5rem;
+}
+
+.vendor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Ideas */
+
+.idea-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-top: 1rem;
+}
+
+.idea {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.idea h3 {
+  margin-top: 0;
+}
+
+.cost {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* Vendor payments */
+
+.payments {
+  flex-basis: 100%;
+}
+
+.payments h4 {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+.payment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0;
+}
+
+.payment-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.payment-form .callout {
+  flex-basis: 100%;
+}

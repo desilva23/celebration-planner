@@ -1,0 +1,93 @@
+/* Badges and callouts */
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.provenance .badge,
+.cost .badge {
+  margin-left: 0;
+}
+
+.badge.muted {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.badge.ok,
+.badge.done {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.badge.info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.badge.overdue {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.badge.due-soon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.callout {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.callout ul {
+  margin: 0;
+}
+
+.callout.warning {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+}
+
+.callout.danger {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.callout.info {
+  background: var(--info-soft);
+  border-color: var(--info);
+}
+
+.warn-text {
+  color: var(--warn);
+}
+
+.ok-text {
+  color: var(--ok);
+}
+
+.provenance {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.proposal {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.diff {
+  font-weight: 600;
+}

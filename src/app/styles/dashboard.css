@@ -1,0 +1,225 @@
+/* Dashboard */
+
+.overview {
+  margin-bottom: 1rem;
+}
+
+.meta {
+  color: var(--muted);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.stats div {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+
+.stats dt {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.stats small {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.next-up {
+  margin-top: 0.5rem;
+}
+
+.section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  margin: 0 -16px 1.25rem;
+  padding: 0.5rem 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.section-nav a:hover {
+  background: var(--surface-2);
+}
+
+.manual-edit {
+  margin-top: 1rem;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* Budget */
+
+.budget-total {
+  font-size: 1.05rem;
+}
+
+.budget-meter {
+  width: 100%;
+  height: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.tradeoffs {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+}
+
+.tradeoffs h3 {
+  margin-top: 0;
+}
+
+.option-grid {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.option ul {
+  flex: 1;
+  font-size: 0.92rem;
+}
+
+.option.infeasible {
+  opacity: 0.8;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+thead th {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+td ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.amount-input {
+  max-width: 10rem;
+}
+
+/* Timeline */
+
+.task-list,
+.vendor-list,
+.idea-grid {
+  list-style: none;
+  padding: 0;
+}
+
+.task {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.task-main input {
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.task-main label {
+  margin: 0;
+}
+
+.task.done .task-main label {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.task-meta {
+  margin: 0.2rem 0 0 1.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.task .hint,
+.task .reschedule {
+  margin-left: 1.75rem;
+}
+
+.reschedule form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.reschedule input {
+  width: auto;
+}

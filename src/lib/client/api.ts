@@ -14,7 +14,7 @@ async function postJson<T>(path: string, body: unknown): Promise<AiEnvelope<T>> 
   } catch {
     throw new Error("Couldn't reach the server. Check your connection and try again.");
   }
-  // Stryker disable next-line ArrowFunction: null or undefined, a body that isn't JSON is handled the same
+  // A reply that isn't JSON is handled like one with no body.
   const data: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const message = (data as { error?: unknown } | null)?.error;
@@ -53,7 +53,6 @@ export function useAiCall<T>(path: string) {
     [path],
   );
 
-  // Stryker disable next-line ArrayDeclaration: any unchanging list keeps the same function
   const reset = useCallback(() => setState({ status: "idle" }), []);
 
   return {

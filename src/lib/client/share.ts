@@ -7,19 +7,27 @@ import { parsePlan } from "./plan-file";
 
 const PREFIX = "#plan=";
 
-async function transform(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const body = new Response(bytes as BodyInit).body!.pipeThrough(stream);
-  return new Uint8Array(await new Response(body).arrayBuffer());
+async function transform(
+  bytes: Uint8Array<ArrayBuffer>,
+  stream: CompressionStream | DecompressionStream,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const source = new ReadableStream<BufferSource>({
+    start(controller) {
+      controller.enqueue(bytes);
+      controller.close();
+    },
+  });
+  return new Uint8Array(await new Response(source.pipeThrough(stream)).arrayBuffer());
 }
 
 function toBase64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  // Stryker disable next-line Regex: base64 only ever pads at the end
+  // Base64 pads only at the end.
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function fromBase64Url(text: string): Uint8Array {
+function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
   const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }

@@ -143,7 +143,7 @@ function trimGuests(plan: Plan, gap: number): TradeoffOption {
   let fewer = Math.ceil(gap / perGuest);
   let budget = scaleForGuests(plan.budget, guestCount, guestCount - fewer);
   while (
-    // Stryker disable next-line ConditionalExpression,ArithmeticOperator: this guard only stops the loop early; without it the result at zero guests is "not feasible" all the same
+    // Stop at zero guests: past that, nothing could fit.
     guestCount - fewer >= 1 &&
     plannedTotal(budget) > totalBudget
   ) {

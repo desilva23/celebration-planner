@@ -1,0 +1,59 @@
+/* Effects toast */
+
+.toast-region {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+/* While a report is showing, controls must not end up behind it (WCAG 2.4.11):
+   keyboard focus and scrolling stop above it, and the page gets room at the
+   end so its last controls can scroll clear. Covers the report's tallest size. */
+html:has(.toast) {
+  --toast-room: calc(40vh + 2rem);
+  scroll-padding-bottom: var(--toast-room);
+}
+
+html:has(.toast) body {
+  padding-bottom: var(--toast-room);
+}
+
+.toast {
+  width: min(100%, 26rem);
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.18);
+  pointer-events: auto;
+}
+
+.toast-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toast-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.toast h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.toast ul {
+  margin: 0.5rem 0 0;
+  font-size: 0.92rem;
+}
