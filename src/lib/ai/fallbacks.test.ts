@@ -60,6 +60,13 @@ describe("interpretFallback", () => {
     expect(result.clarifyingQuestion).toMatch(/how much/i);
   });
 
+  // Regression: the summary named every category mentioned, though only four are protected.
+  it("protects at most four categories, and says which", () => {
+    const result = read("food photos venue decor and music matter most");
+    expect(result.updates.priorities).toEqual(["catering", "photography", "venue", "decor"]);
+    expect(result.understood).toBe("Understood: protect catering and photography and venue and decor.");
+  });
+
   it("won't move the event into the past", () => {
     const result = interpretFallback({ message: "it's now 2026-01-01", brief, today: TODAY });
     expect(result.updates.eventDate).toBeNull();

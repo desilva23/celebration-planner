@@ -177,7 +177,7 @@ export function interpretFallback({ message, brief, today }: InterpretRequest): 
     const priorities = PRIORITY_KEYWORDS.filter(([pattern]) => pattern.test(phrase)).map(([, c]) => c);
     if (priorities.length) {
       updates.priorities = priorities.slice(0, 4);
-      understood.push(`protect ${priorities.join(" and ")}`);
+      understood.push(`protect ${updates.priorities.join(" and ")}`);
     }
   }
 
